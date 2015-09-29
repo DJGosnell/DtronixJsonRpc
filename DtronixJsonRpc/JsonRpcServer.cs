@@ -73,7 +73,7 @@ namespace DtronixJsonRpc {
 
         }
 
-        public void Broadcast(Action<TheatreConnector<ServerActions>> action) {
+        public void Broadcast(Action<JsonRpcConnector> action) {
             foreach (var client in clients) {
                 if (client.Value.Connected == false) {
                     continue;
@@ -89,7 +89,7 @@ namespace DtronixJsonRpc {
 
         public void Stop(string reason) {
             Broadcast(cl => {
-                cl.Stop("Server shutdown", JsonRpcMode.Server);
+                cl.Stop("Server shutdown", JsonRpcSource.Server);
             });
 
             cancellation_token_source.Cancel();

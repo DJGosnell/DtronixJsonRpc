@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace DtronixJsonRpc {
-    public enum JsonRpcMode {
+    public enum JsonRpcSource {
         Server,
         Client
     }

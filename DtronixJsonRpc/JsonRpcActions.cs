@@ -8,19 +8,19 @@ using System.Threading.Tasks;
 namespace DtronixJsonRpc {
 	public abstract class JsonRpcActions {
 
-		protected readonly JsonRpcMode mode;
+		protected readonly JsonRpcSource mode;
 		protected readonly JsonRpcConnector<ServerActions, ClientActions> client_handler;
 		protected readonly JsonRpcConnector<ClientActions, ServerActions> client;
 
 		public JsonRpcActions(JsonRpcConnector client, JsonRpcConnector<ServerActions, ClientActions> client_handler) {
 			this.client = client;
 			this.client_handler = client_handler;
-            mode = (client_handler == null)? JsonRpcMode.Client : JsonRpcMode.Server;
+            mode = (client_handler == null)? JsonRpcSource.Client : JsonRpcSource.Server;
 		}
 
 		protected bool SendAndReceived(object args, [System.Runtime.CompilerServices.CallerMemberName] string member_name = "") {
 
-			if (mode == JsonRpcMode.Server) {
+			if (mode == JsonRpcSource.Server) {
 				client_handler.Send(member_name, args);
 				return false;
 			} else {

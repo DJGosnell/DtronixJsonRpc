@@ -8,6 +8,6 @@ namespace DtronixJsonRpc{
     public class ClientInfo : JsonRpcActionArgs {
         public int Id { get; set; } = -1;
         public string Username { get; set; }
-        public UserStatus Status { get; set; } = UserStatus.Disconnected;
+        public ClientStatus Status { get; set; } = ClientStatus.Disconnected;
     }
 }
