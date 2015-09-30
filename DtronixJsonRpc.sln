@@ -5,6 +5,8 @@ VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DtronixJsonRpc", "DtronixJsonRpc\DtronixJsonRpc.csproj", "{6BADC36F-A1F7-4C6C-8DF3-647C4E934273}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DtronixJsonRpcTests", "DtronixJsonRpcTests\DtronixJsonRpcTests.csproj", "{9D61E652-2FD3-4D76-84D1-876DDAA7B405}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{6BADC36F-A1F7-4C6C-8DF3-647C4E934273}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6BADC36F-A1F7-4C6C-8DF3-647C4E934273}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6BADC36F-A1F7-4C6C-8DF3-647C4E934273}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9D61E652-2FD3-4D76-84D1-876DDAA7B405}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D61E652-2FD3-4D76-84D1-876DDAA7B405}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9D61E652-2FD3-4D76-84D1-876DDAA7B405}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9D61E652-2FD3-4D76-84D1-876DDAA7B405}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

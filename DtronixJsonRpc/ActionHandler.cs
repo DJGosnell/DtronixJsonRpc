@@ -5,18 +5,15 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace DtronixJsonRpc {
-	public class ActionHandler<T> : IActionHandler {
+	public class ActionHandler<THandler> : IActionHandler {
 
-		public JsonRpcConnector<IActionHandler> Connector { get; set; }
+		public JsonRpcConnector<THandler> Connector { get; set; }
 
-		protected bool SendAndReceived(object args, [System.Runtime.CompilerServices.CallerMemberName] string member_name = "") {
-			if (Connector.Mode == JsonRpcSource.Server) {
-				Connector.Send(member_name, args);
-				return false;
-			} else {
-				return true;
-			}
-		}
+		/*private Dictionary<string, JsonRpcActions<IActionHandler>> loaded_actions = new Dictionary<string, JsonRpcActions<IActionHandler>>();
+
+		public void AddActions(string name, JsonRpcActions<IActionHandler> actions) {
+			loaded_actions.Add( actions)
+        }*/
 
 		public void ExecuteAction(string method, object obj) {
 			var method_info = GetType().GetMethod(method);
