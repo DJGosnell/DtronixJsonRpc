@@ -8,9 +8,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using System.Diagnostics;
+using DtronixJsonRpc;
 
 namespace DtronixJsonRpc {
-	public class JsonRpcConnector {
+	public class JsonRpcConnector<T> 
+		where T : IActionHandler { 
 
 		private readonly CancellationTokenSource cancellation_token_source = new CancellationTokenSource();
 
@@ -31,27 +33,29 @@ namespace DtronixJsonRpc {
 			}
 		}
 
+		public T Actions { get; }
+
 		private object lock_object = new object();
 
-		public event EventHandler<JsonRpcConnector, ClientDisconnectEventArgs> OnDisconnect;
-		public event EventHandler<JsonRpcConnector> OnConnect;
-		public event EventHandler<JsonRpcConnector, ConnectorAuthroizationEventArgs> OnAuthorizationRequest;
-		public event EventHandler<JsonRpcConnector, ConnectorAuthroizationEventArgs> OnAuthorizationVerify;
-		public event EventHandler<JsonRpcConnector, ActionMethodCallEventArgs> OnActionMethodCall;
-		public event EventHandler<JsonRpcConnector, ConnectedClientChangedEventArgs> OnConnectedClientChange;
+		public event EventHandler<JsonRpcConnector<T>, ClientDisconnectEventArgs> OnDisconnect;
+		public event EventHandler<JsonRpcConnector<T>> OnConnect;
+		public event EventHandler<JsonRpcConnector<T>, ConnectorAuthroizationEventArgs> OnAuthorizationRequest;
+		public event EventHandler<JsonRpcConnector<T>, ConnectorAuthroizationEventArgs> OnAuthorizationVerify;
+		public event EventHandler<JsonRpcConnector<T>, ActionMethodCallEventArgs> OnActionMethodCall;
+		public event EventHandler<JsonRpcConnector<T>, ConnectedClientChangedEventArgs> OnConnectedClientChange;
 
 		public JsonRpcSource Mode { get; protected set; }
 
-		public JsonRpcServer Server { get; private set; }
+		public JsonRpcServer<T> Server { get; private set; }
 
 		public JsonRpcConnector(string address) {
+			Actions.Connector = this as JsonRpcConnector<IActionHandler>;
 			Address = address;
 			client = new TcpClient();
 			Mode = JsonRpcSource.Client;
-
 		}
 
-		public JsonRpcConnector(JsonRpcServer server, TcpClient client, int id) {
+		public JsonRpcConnector(JsonRpcServer<T> server, TcpClient client, int id) {
 			this.client = client;
 			Info.Id = id;
 			Server = server;
@@ -74,7 +78,7 @@ namespace DtronixJsonRpc {
 			client_writer.Flush();
 
 			// Checks to ensure the client should connect.
-			if (Server.Clients.Values.FirstOrDefault(cli => cli._Id != Info.Id && cli.Info.Username == Info.Username) != null) {
+			if (Server.Clients.Values.FirstOrDefault(cli => cli.Info.Id != Info.Id && cli.Info.Username == Info.Username) != null) {
 				Disconnect("Duplicate username on server.", JsonRpcSource.Server);
 				return;
 			}
@@ -85,10 +89,10 @@ namespace DtronixJsonRpc {
 				if (cl?.Info.Id == Info.Id) {
 					return;
 				}
-				cl.Send("$OnConnectedClientChange", new ClientInfo[] { Info });
+				cl.Send("$" + nameof(OnConnectedClientChange), new ClientInfo[] { Info });
 			});
 
-			Send("$OnConnectedClientChange", Server.Clients.Select(cl => cl.Value.Info).ToArray());
+			Send("$" + nameof(OnConnectedClientChange), Server.Clients.Select(cl => cl.Value.Info).ToArray());
 			LogLine("Client successfully authorized on the server.");
 		}
 
@@ -152,7 +156,7 @@ namespace DtronixJsonRpc {
 					} catch (TaskCanceledException) {
 						return;
 					} catch (Exception) {
-						Disconnect("Connection closed", (Server == null) ? JsonRpcSource.Client | JsonRpcSource.Server);
+						Disconnect("Connection closed", (Server == null) ? JsonRpcSource.Client : JsonRpcSource.Server);
 						return;
 					}
 
@@ -186,29 +190,19 @@ namespace DtronixJsonRpc {
 					var json_data = JsonConvert.DeserializeObject(client_reader.ReadLine(), cli_type);
 
 					try {
-
-					} catch {
+						if (method[0] == '$') {
+							ExecuteSpecialAction(method, json_data);
+						} else {
+							Actions.ExecuteAction(method, json_data);
+						}
+					} catch (Exception e) {
+						LogLine("Action threw exception: \r\n" + e.ToString());
 					}
-					if (method[0] == '$') {
-						ExecuteSpecialMethod(method, json_data);
-					} else {
-						_LocalActions.ExecuteAction(method, json_data, this);
-					}
-
-
-
 				}
-				/*} catch (TaskCanceledException) {
-                    Disconnect("Client closed", mode);
-                    return;
-                } catch (Exception e) {
-                    LogLine("Exception Occurred: " + e.ToString());
-                    throw;
-                }*/
 
 			}, TaskCreationOptions.LongRunning, cancellation_token_source.Token).ContinueWith(task => {
 				if (cancellation_token_source.IsCancellationRequested) {
-					Disconnect("Client closed", mode);
+					Disconnect("Client closed", Mode);
 					return;
 				}
 
@@ -229,29 +223,38 @@ namespace DtronixJsonRpc {
 			}, TaskContinuationOptions.AttachedToParent);
 		}
 
-		private void ExecuteSpecialMethod(string method, object json_data) {
+		private void ExecuteSpecialAction(string method, object json_data) {
 			switch (method) {
-				case "$OnConnectedClientChange":
+				case "$" + nameof(OnConnectedClientChange):
 					OnConnectedClientChange?.Invoke(this, new ConnectedClientChangedEventArgs(json_data as ClientInfo[]));
                     break;
-			}
+
+				case "$" + nameof(OnDisconnect):
+					var ci = json_data as ClientInfo;
+					Disconnect(ci.DisconnectReason, JsonRpcSource.Server);
+					break;
+            }
 		}
 
 		public void Disconnect(string reason, JsonRpcSource source, SocketError socket_error = SocketError.Success) {
 			LogLine("Stop requested. Reason: " + reason);
-			if (_IsStopping) {
+
+			if (Info.Status == ClientStatus.Disconnecting) {
 				LogLine("Stop requested but client is already in the process of stopping.");
 				return;
 			}
-			_IsStopping = true;
+			Info.Status = ClientStatus.Disconnecting;
 
 			// If this is the server, let the client know they are being disconnected.
-			(RemoteActions as ClientActions)?.Disconnect(new ClientActions.DisconnectArgs() { Reason = reason, StopSource = JsonRpcSource.Server });
+			if(Mode == JsonRpcSource.Server) {
+				Send("$OnDisconnect", new ClientInfo[] { Info });
+			}
 
-
-			OnDisconnect?.Invoke(this, new TheatreClientDisconnectArgs(reason, source, socket_error));
+			OnDisconnect?.Invoke(this, new ClientDisconnectEventArgs(reason, source, socket_error));
 			cancellation_token_source.Cancel();
 			client.Close();
+
+			Info.Status = ClientStatus.Disconnected;
 		}
 
 

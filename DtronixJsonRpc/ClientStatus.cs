@@ -11,6 +11,7 @@ namespace DtronixJsonRpc {
 		Away = 1 << 2,
 		Connected = 1 << 3,
 		Connecting = 1 << 4,
-		Disconnected = 1 << 5
+		Disconnected = 1 << 5,
+		Disconnecting = 1 << 6
 	}
 }

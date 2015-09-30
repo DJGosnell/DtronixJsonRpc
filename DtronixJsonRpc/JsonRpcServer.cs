@@ -9,20 +9,19 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace DtronixJsonRpc {
-    public class JsonRpcServer {
+    public class JsonRpcServer<T> 
+		where T : IActionHandler {
 
         private readonly CancellationTokenSource cancellation_token_source;
         private readonly TcpListener listener;
 
-        private ConcurrentDictionary<int, JsonRpcConnector<ServerActions>> clients = new ConcurrentDictionary<int, JsonRpcConnector<ServerActions>>();
-
-        private ServerActions server_actions;
+        private ConcurrentDictionary<int, JsonRpcConnector<T>> clients = new ConcurrentDictionary<int, JsonRpcConnector<T>>();
 
         public string Address { get; set; }
 
-        private string password;
+        private string token;
 
-        public ConcurrentDictionary<int, TheatreConnector<ServerActions>> Clients {
+        public ConcurrentDictionary<int, JsonRpcConnector<T>> Clients {
             get {
                 return clients;
             }
@@ -30,13 +29,9 @@ namespace DtronixJsonRpc {
 
         private int last_client_id = 0;
 
-        private Core core;
-
-        public JsonRpcServer(Core core, string password) {
-            this.core = core;
-            this.password = password;
+        public JsonRpcServer(string password) {
+            token = password;
             cancellation_token_source = new CancellationTokenSource();
-            server_actions = new ServerActions(this);
             listener = new TcpListener(IPAddress.Any, 2828);
         }
 
@@ -48,38 +43,36 @@ namespace DtronixJsonRpc {
             Task.Factory.StartNew((main_task) => {
                 while (cancellation_token_source.IsCancellationRequested == false) {
                     var client = listener.AcceptTcpClient();
-                    var client_listener = TheatreConnector<ServerActions>.CreateServer(core, client, password, server_actions, last_client_id++);
+                    var client_listener = new JsonRpcConnector<T>(this, client, last_client_id++);
 
 
                     client_listener.OnDisconnect += (sender, args) => {
-                        TheatreConnector<ServerActions> removed_client;
-                        clients.TryRemove(sender.Id, out removed_client);
+						JsonRpcConnector<T> removed_client;
+                        clients.TryRemove(sender.Info.Id, out removed_client);
 
-                        Broadcast(cl => cl.Send(nameof(ClientActions.ClientDisconnect), new Tuple<int, string>(removed_client.Id, args.Reason)));
+                        Broadcast(cl => cl.Send("$" + nameof(JsonRpcConnector<T>.OnConnectedClientChange), new ClientInfo[] { removed_client.Info }));
                     };
 
-                    clients.TryAdd(client_listener.Id, client_listener);
+                    clients.TryAdd(client_listener.Info.Id, client_listener);
 
 
-                    client_listener.Start();
+                    client_listener.Connect();
 
                 }
 
             }, TaskCreationOptions.LongRunning, cancellation_token_source.Token).ContinueWith(task => {
                 if (cancellation_token_source.IsCancellationRequested) {
-                    Broadcast(cl => cl.Send(nameof(ClientActions.ClientDisconnect), "Server shutting down."));
+                    Broadcast(cl => cl.Send("$" + nameof(JsonRpcConnector<T>.OnDisconnect), "Server shutting down."));
                 }
             }, TaskContinuationOptions.AttachedToParent);
 
         }
 
-        public void Broadcast(Action<JsonRpcConnector> action) {
+        public void Broadcast(Action<JsonRpcConnector<T>> action) {
             foreach (var client in clients) {
-                if (client.Value.Connected == false) {
-                    continue;
-                }
-
-                action(client.Value);
+				if (client.Value.Info.Status == ClientStatus.Connected) {
+					action(client.Value);
+				}
             }
         }
 
@@ -89,7 +82,7 @@ namespace DtronixJsonRpc {
 
         public void Stop(string reason) {
             Broadcast(cl => {
-                cl.Stop("Server shutdown", JsonRpcSource.Server);
+                cl.Disconnect("Server shutdown", JsonRpcSource.Server);
             });
 
             cancellation_token_source.Cancel();
