@@ -6,20 +6,14 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace DtronixJsonRpcTests {
-	class TestActionHandler : ActionHandler {
+	class TestActionHandler : ActionHandler<TestActionHandler> {
 
-		//private Dictionary<string, JsonRpcActions<TestActionHandler>> actions = new Dictionary<string, JsonRpcActions<TestActionHandler>>();
-
-		public ClientActions<TestActionHandler> _ClientActions = null;
-		public ClientActions<TestActionHandler> ClientActions {
+		private TestClientActions<TestActionHandler> _TestClientActions = null;
+		public TestClientActions<TestActionHandler> TestClientActions {
 			get {
-				return _ClientActions ?? (_ClientActions = new ClientActions<TestActionHandler>());
+				return _TestClientActions ?? (_TestClientActions = new TestClientActions<TestActionHandler>(Connector));
 			}
 		}
-
-		public TestActionHandler(JsonRpcConnector<TestActionHandler> connector) {
-			Connector = connector;
-        }
 
 	}
 }

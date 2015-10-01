@@ -11,8 +11,8 @@ using System.Diagnostics;
 using DtronixJsonRpc;
 
 namespace DtronixJsonRpc {
-	public class JsonRpcConnector<T> 
-		where T : IActionHandler { 
+	public class JsonRpcConnector<THandler>
+		where THandler : ActionHandler<THandler>, new(){ 
 
 		private readonly CancellationTokenSource cancellation_token_source = new CancellationTokenSource();
 
@@ -33,29 +33,32 @@ namespace DtronixJsonRpc {
 			}
 		}
 
-		public T Actions { get; }
+		public THandler Actions { get; }
 
 		private object lock_object = new object();
 
-		public event EventHandler<JsonRpcConnector<T>, ClientDisconnectEventArgs> OnDisconnect;
-		public event EventHandler<JsonRpcConnector<T>> OnConnect;
-		public event EventHandler<JsonRpcConnector<T>, ConnectorAuthroizationEventArgs> OnAuthorizationRequest;
-		public event EventHandler<JsonRpcConnector<T>, ConnectorAuthroizationEventArgs> OnAuthorizationVerify;
-		public event EventHandler<JsonRpcConnector<T>, ActionMethodCallEventArgs> OnActionMethodCall;
-		public event EventHandler<JsonRpcConnector<T>, ConnectedClientChangedEventArgs> OnConnectedClientChange;
+		public event EventHandler<JsonRpcConnector<THandler>, ClientDisconnectEventArgs> OnDisconnect;
+		public event EventHandler<JsonRpcConnector<THandler>> OnConnect;
+		public event EventHandler<JsonRpcConnector<THandler>, ConnectorAuthroizationEventArgs> OnAuthorizationRequest;
+		public event EventHandler<JsonRpcConnector<THandler>, ConnectorAuthroizationEventArgs> OnAuthorizationVerify;
+		public event EventHandler<JsonRpcConnector<THandler>, ActionMethodCallEventArgs> OnActionMethodCall;
+		public event EventHandler<JsonRpcConnector<THandler>, ConnectedClientChangedEventArgs> OnConnectedClientChange;
 
 		public JsonRpcSource Mode { get; protected set; }
 
-		public JsonRpcServer<T> Server { get; private set; }
+		public JsonRpcServer<THandler> Server { get; private set; }
 
 		public JsonRpcConnector(string address) {
-			Actions.Connector = this as JsonRpcConnector<IActionHandler>;
+			Actions = new THandler();
+            Actions.Connector = this as JsonRpcConnector<THandler>;
 			Address = address;
 			client = new TcpClient();
 			Mode = JsonRpcSource.Client;
 		}
 
-		public JsonRpcConnector(JsonRpcServer<T> server, TcpClient client, int id) {
+		public JsonRpcConnector(JsonRpcServer<THandler> server, TcpClient client, int id) {
+			Actions = new THandler();
+			Actions.Connector = this as JsonRpcConnector<THandler>;
 			this.client = client;
 			Info.Id = id;
 			Server = server;
@@ -82,6 +85,8 @@ namespace DtronixJsonRpc {
 				Disconnect("Duplicate username on server.", JsonRpcSource.Server);
 				return;
 			}
+
+			Info.Status = ClientStatus.Connected;
 
 			// Alert all the other clients of the new connection.
 			Server.Broadcast(cl => {
@@ -136,12 +141,14 @@ namespace DtronixJsonRpc {
 				client_writer = new StreamWriter(base_stream, Encoding.UTF8, 1024 * 16, true);
 				client_reader = new StreamReader(base_stream, Encoding.UTF8, true, 1024 * 16, true);
 
-				LogLine("Connected.");
+				LogLine("Connected. Authorizing...");
 				if (Mode == JsonRpcSource.Server) {
 					AuthorizeClient();
 				} else {
 					RequestAuthorization();
                 }
+
+				LogLine("Authorized");
 
 				Info.Status = ClientStatus.Connected;
 
@@ -172,7 +179,9 @@ namespace DtronixJsonRpc {
 					var type_element = cli_type.GetElementType();
 
 					// If the class is not a subclass of one of the models, then something suspicious is going on.
-					if (type_element == null || type_element.IsSubclassOf(typeof(JsonRpcActionArgs)) == false) {
+					var sent_type_subclass = cli_type.IsSubclassOf(typeof(JsonRpcActionArgs));
+					var sent_element_subclass = type_element?.IsSubclassOf(typeof(JsonRpcActionArgs));
+                    if (sent_type_subclass == false && sent_element_subclass == false) {
 						Disconnect("Sent invalid type", Mode);
 						return;
 					}
@@ -230,8 +239,8 @@ namespace DtronixJsonRpc {
                     break;
 
 				case "$" + nameof(OnDisconnect):
-					var ci = json_data as ClientInfo;
-					Disconnect(ci.DisconnectReason, JsonRpcSource.Server);
+					var ci = json_data as ClientInfo[];
+					Disconnect(ci[0].DisconnectReason, JsonRpcSource.Server);
 					break;
             }
 		}
@@ -266,7 +275,7 @@ namespace DtronixJsonRpc {
 			LogLine($"Sending method '{method}'");
 
 			lock (lock_object) {
-				client_writer.WriteLine(json.GetType().ToString());
+				client_writer.WriteLine(json.GetType().AssemblyQualifiedName);
 				client_writer.WriteLine(method);
 				if (json == null) {
 					client_writer.WriteLine();

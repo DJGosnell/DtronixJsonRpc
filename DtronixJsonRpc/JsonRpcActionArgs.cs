@@ -8,6 +8,6 @@ using System.Threading.Tasks;
 
 namespace DtronixJsonRpc {
     public class JsonRpcActionArgs {
-        public JsonRpcSource Source { get; set; }
+		public JsonRpcSource Source { get; set; } = JsonRpcSource.Unset;
 	}
 }

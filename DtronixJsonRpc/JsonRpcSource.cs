@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace DtronixJsonRpc {
     public enum JsonRpcSource {
-        Server,
-        Client
+		Unset = 1 << 0,
+        Server = 1 << 1,
+        Client = 1 << 2
     }
 }

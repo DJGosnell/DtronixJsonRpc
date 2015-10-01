@@ -49,14 +49,13 @@
     <Compile Include="ClientStatus.cs" />
     <Compile Include="ConnectedClientChangedEventArgs.cs" />
     <Compile Include="ConnectorAuthroizationEventArgs.cs" />
-    <Compile Include="IActionHandler.cs" />
     <Compile Include="JsonRpcActionArgs.cs" />
     <Compile Include="ActionMethodAttribute.cs" />
     <Compile Include="JsonRpcActions.cs" />
     <Compile Include="ClientInfo.cs" />
     <Compile Include="ActionMethodCallEventArgs.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="JsonRpcMode.cs" />
+    <Compile Include="JsonRpcSource.cs" />
     <Compile Include="JsonRpcConnector.cs" />
     <Compile Include="JsonRpcServer.cs" />
     <Compile Include="ClientDisconnectEventArgs.cs" />

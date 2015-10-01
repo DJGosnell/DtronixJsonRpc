@@ -9,19 +9,19 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace DtronixJsonRpc {
-    public class JsonRpcServer<T> 
-		where T : IActionHandler {
+    public class JsonRpcServer<THandler> 
+		where THandler : ActionHandler<THandler>, new() {
 
         private readonly CancellationTokenSource cancellation_token_source;
         private readonly TcpListener listener;
 
-        private ConcurrentDictionary<int, JsonRpcConnector<T>> clients = new ConcurrentDictionary<int, JsonRpcConnector<T>>();
+        private ConcurrentDictionary<int, JsonRpcConnector<THandler>> clients = new ConcurrentDictionary<int, JsonRpcConnector<THandler>>();
 
         public string Address { get; set; }
 
         private string token;
 
-        public ConcurrentDictionary<int, JsonRpcConnector<T>> Clients {
+        public ConcurrentDictionary<int, JsonRpcConnector<THandler>> Clients {
             get {
                 return clients;
             }
@@ -42,15 +42,17 @@ namespace DtronixJsonRpc {
 
             Task.Factory.StartNew((main_task) => {
                 while (cancellation_token_source.IsCancellationRequested == false) {
-                    var client = listener.AcceptTcpClient();
-                    var client_listener = new JsonRpcConnector<T>(this, client, last_client_id++);
+                    var client = listener.AcceptTcpClientAsync();
+					client.Wait();
+
+					var client_listener = new JsonRpcConnector<THandler>(this, client.Result, last_client_id++);
 
 
                     client_listener.OnDisconnect += (sender, args) => {
-						JsonRpcConnector<T> removed_client;
+						JsonRpcConnector<THandler> removed_client;
                         clients.TryRemove(sender.Info.Id, out removed_client);
 
-                        Broadcast(cl => cl.Send("$" + nameof(JsonRpcConnector<T>.OnConnectedClientChange), new ClientInfo[] { removed_client.Info }));
+                        Broadcast(cl => cl.Send("$" + nameof(JsonRpcConnector<THandler>.OnConnectedClientChange), new ClientInfo[] { removed_client.Info }));
                     };
 
                     clients.TryAdd(client_listener.Info.Id, client_listener);
@@ -62,13 +64,13 @@ namespace DtronixJsonRpc {
 
             }, TaskCreationOptions.LongRunning, cancellation_token_source.Token).ContinueWith(task => {
                 if (cancellation_token_source.IsCancellationRequested) {
-                    Broadcast(cl => cl.Send("$" + nameof(JsonRpcConnector<T>.OnDisconnect), "Server shutting down."));
+                    Broadcast(cl => cl.Send("$" + nameof(JsonRpcConnector<THandler>.OnDisconnect), "Server shutting down."));
                 }
             }, TaskContinuationOptions.AttachedToParent);
 
         }
 
-        public void Broadcast(Action<JsonRpcConnector<T>> action) {
+        public void Broadcast(Action<JsonRpcConnector<THandler>> action) {
             foreach (var client in clients) {
 				if (client.Value.Info.Status == ClientStatus.Connected) {
 					action(client.Value);
