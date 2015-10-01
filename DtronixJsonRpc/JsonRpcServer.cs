@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NLog;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,7 +13,9 @@ namespace DtronixJsonRpc {
     public class JsonRpcServer<THandler> 
 		where THandler : ActionHandler<THandler>, new() {
 
-        private readonly CancellationTokenSource cancellation_token_source;
+		private static Logger logger = LogManager.GetCurrentClassLogger();
+
+		private readonly CancellationTokenSource cancellation_token_source;
         private readonly TcpListener listener;
 
         private ConcurrentDictionary<int, JsonRpcConnector<THandler>> clients = new ConcurrentDictionary<int, JsonRpcConnector<THandler>>();
@@ -37,18 +40,26 @@ namespace DtronixJsonRpc {
 
 
         public void Start() {
+			listener.Start();
+			logger.Debug("Server: Listening for connections.");
 
-            listener.Start();
+			Task.Factory.StartNew((main_task) => {
+				logger.Debug("Server: Listening for connections.");
+				while (cancellation_token_source.IsCancellationRequested == false) {
+					
+					var client = listener.AcceptTcpClientAsync();
+					logger.Debug("Server: New client attempting to connect");
+					try {
+						client.Wait();
 
-            Task.Factory.StartNew((main_task) => {
-                while (cancellation_token_source.IsCancellationRequested == false) {
-                    var client = listener.AcceptTcpClientAsync();
-					client.Wait();
+					} catch (Exception e) {
+						logger.Info(e, "Server: Stopped listening for clients.", null);
+					}
 
 					var client_listener = new JsonRpcConnector<THandler>(this, client.Result, last_client_id++);
 
-
                     client_listener.OnDisconnect += (sender, args) => {
+						logger.Info("Server: Client ({0}) disconnected. Reason: {0}", sender.Info.Id, args.Reason);
 						JsonRpcConnector<THandler> removed_client;
                         clients.TryRemove(sender.Info.Id, out removed_client);
 
@@ -56,7 +67,6 @@ namespace DtronixJsonRpc {
                     };
 
                     clients.TryAdd(client_listener.Info.Id, client_listener);
-
 
                     client_listener.Connect();
 
@@ -73,17 +83,15 @@ namespace DtronixJsonRpc {
         public void Broadcast(Action<JsonRpcConnector<THandler>> action) {
             foreach (var client in clients) {
 				if (client.Value.Info.Status == ClientStatus.Connected) {
+					logger.Debug("Server: Broadcasting method to client {0}.", client.Value.Info.Id);
 					action(client.Value);
 				}
             }
         }
 
-        private void Client_listener_OnDisconnect() {
-            throw new NotImplementedException();
-        }
-
         public void Stop(string reason) {
-            Broadcast(cl => {
+			logger.Info("Server: Stopping server.");
+			Broadcast(cl => {
                 cl.Disconnect("Server shutdown", JsonRpcSource.Server);
             });
 

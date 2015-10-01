@@ -19,7 +19,7 @@ namespace DtronixJsonRpcTests {
 			public int RandomInt { get; set; }
 		}
 
-		[ActionMethod]
+		[ActionMethod(JsonRpcSource.Client)]
 		public void Test(TestClientActionTestArgs args) {
 			if (SendAndReceived(args, nameof(TestClientActions<THandler>))) {
 
