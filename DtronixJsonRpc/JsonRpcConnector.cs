@@ -160,10 +160,16 @@ namespace DtronixJsonRpc {
 					try {
 						type_task = client_reader.ReadLineAsync();//.WithCancellation(cancellation_token_source.Token);
 						type_task.Wait(cancellation_token_source.Token);
+
+						// See if we have reached the end of the stream.
+						if(type_task.Result == null) {
+							Disconnect("Connection closed", Mode);
+							return;
+						}
 					} catch (TaskCanceledException) {
 						return;
 					} catch (Exception) {
-						Disconnect("Connection closed", (Server == null) ? JsonRpcSource.Client : JsonRpcSource.Server);
+						Disconnect("Connection closed", Mode);
 						return;
 					}
 
@@ -268,21 +274,27 @@ namespace DtronixJsonRpc {
 
 
 		public void Send(string method, object json = null) {
-			if (client.Connected == false) {
+			if (Info.Status == ClientStatus.Disconnecting || Info.Status == ClientStatus.Disconnected) {
 				return;
 			}
 
 			LogLine($"Sending method '{method}'");
 
 			lock (lock_object) {
-				client_writer.WriteLine(json.GetType().AssemblyQualifiedName);
-				client_writer.WriteLine(method);
-				if (json == null) {
-					client_writer.WriteLine();
-				} else {
-					client_writer.WriteLine(JsonConvert.SerializeObject(json));
+				try {
+					client_writer.WriteLine(json.GetType().AssemblyQualifiedName);
+					client_writer.WriteLine(method);
+					if (json == null) {
+						client_writer.WriteLine();
+					} else {
+						client_writer.WriteLine(JsonConvert.SerializeObject(json));
+					}
+					client_writer.Flush();
+				} catch (ObjectDisposedException) {
+					// The client was closed.  
+					return;
 				}
-				client_writer.Flush();
+
 			}
 
 		}

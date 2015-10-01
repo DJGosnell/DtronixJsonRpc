@@ -9,27 +9,40 @@ namespace DtronixJsonRpcTests {
 	public class ClientServerInteractionTests {
 		private readonly ITestOutputHelper output;
 
+		private JsonRpcServer<TestActionHandler> Server { get; }
+		private JsonRpcConnector<TestActionHandler> Client { get; }
+
 		public ClientServerInteractionTests(ITestOutputHelper output) {
 			this.output = output;
+			Server = new JsonRpcServer<TestActionHandler>(null);
+			Client = new JsonRpcConnector<TestActionHandler>("localhost");
+			Client.Info.Username = "DefaultTestClient";
 		}
-
 
 		[Fact]
 		public void ServerStartsAndClientConnects() {
 			var called_method_reset = new ManualResetEvent(false);
+			Server.Start();
+
+			Client.OnConnect += (sender, e) => {
+				called_method_reset.Set();
+			};
+			
+			Client.Connect();
+
+			Assert.True(called_method_reset.WaitOne(5000));
+
+			Server.Stop("Test completed");
+		}
 
 
+		/*[Fact]
+		public void ServerCallesClientMethod() {
+			var called_method_reset = new ManualResetEvent(false);
 
 			var server = new JsonRpcServer<TestActionHandler>(null);
-
 			server.Start();
-
-
-
 			var client = new JsonRpcConnector<TestActionHandler>("localhost");
-
-
-
             client.Info.Username = "TestUsername";
 
 			client.OnConnect += (sender, e) => {
@@ -55,10 +68,6 @@ namespace DtronixJsonRpcTests {
 			server.Stop("Test completed");
 
 
-		}
-
-		private void sender(TestClientActions<TestActionHandler> sender, TestClientMethodCalledEventArgs e) {
-			throw new NotImplementedException();
-		}
+		}*/
 	}
 }
