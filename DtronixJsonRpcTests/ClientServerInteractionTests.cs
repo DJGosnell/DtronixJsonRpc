@@ -36,22 +36,18 @@ namespace DtronixJsonRpcTests {
 		}
 
 
-		/*[Fact]
+		[Fact]
 		public void ServerCallesClientMethod() {
 			var called_method_reset = new ManualResetEvent(false);
+			Server.Start();
 
-			var server = new JsonRpcServer<TestActionHandler>(null);
-			server.Start();
-			var client = new JsonRpcConnector<TestActionHandler>("localhost");
-            client.Info.Username = "TestUsername";
-
-			client.OnConnect += (sender, e) => {
-				server.Broadcast(cl => cl.Actions.TestClientActions.Test(new TestClientActions<TestActionHandler>.TestClientActionTestArgs() {
+			Client.OnConnect += (sender, e) => {
+				e.Server.Broadcast(cl => cl.Actions.TestClientActions.Test(new TestClientActions<TestActionHandler>.TestClientActionTestArgs() {
 					RandomInt = 1516736
 				}));
 			};
 
-			client.Actions.TestClientActions.MethodCalled += (sender, e) => {
+			Client.Actions.TestClientActions.MethodCalled += (sender, e) => {
 				if(e.Type == typeof(TestClientActions<TestActionHandler>)) {
 					if (e.Method == "Test") {
 						called_method_reset.Set();
@@ -61,13 +57,13 @@ namespace DtronixJsonRpcTests {
 			};
 
 
-			client.Connect();
+			Client.Connect();
 
 			Assert.True(called_method_reset.WaitOne(5000));
 
-			server.Stop("Test completed");
+			Server.Stop("Test completed");
 
 
-		}*/
+		}
 	}
 }

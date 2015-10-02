@@ -170,6 +170,7 @@ namespace DtronixJsonRpc {
 							return;
 						}
 					} catch (TaskCanceledException) {
+						LogDebug("Method reader was canceled.");
 						return;
 					} catch (Exception) {
 						Disconnect("Connection closed", Mode);
@@ -255,10 +256,10 @@ namespace DtronixJsonRpc {
 		}
 
 		public void Disconnect(string reason, JsonRpcSource source, SocketError socket_error = SocketError.Success) {
-			LogInfo("Connector-{0} {1}: Stop requested. Reason: {2}", Mode, Info.Id, reason);
+			LogInfo("Stop requested. Reason: {0}", reason);
 
 			if (Info.Status == ClientStatus.Disconnecting) {
-				LogDebug("Connector-{0} {1}: Stop requested but client is already in the process of stopping.");
+				LogDebug("Stop requested but client is already in the process of stopping.");
 				return;
 			}
 			Info.Status = ClientStatus.Disconnecting;
@@ -277,8 +278,12 @@ namespace DtronixJsonRpc {
 
 
 		public void Send(string method, object json = null) {
-			if (Info.Status == ClientStatus.Disconnecting || Info.Status == ClientStatus.Disconnected) {
+			if (Info.Status == ClientStatus.Disconnected) {
 				return;
+			}
+
+			if (Info.Status == ClientStatus.Connecting) {
+				throw new InvalidOperationException("Can not send request while still connecting.");
 			}
 
 			LogDebug("Sending method '{0}'", new object[] { method });
@@ -294,6 +299,7 @@ namespace DtronixJsonRpc {
 					}
 					client_writer.Flush();
 				} catch (ObjectDisposedException) {
+					LogWarn("Tried to write to the stream when the client was closed.");
 					// The client was closed.  
 					return;
 				}
@@ -309,19 +315,19 @@ namespace DtronixJsonRpc {
 			[System.Runtime.CompilerServices.CallerMemberName] string member_name = "",
 			[System.Runtime.CompilerServices.CallerFilePath] string sourceFilePath = "") {
 
-			logger.Debug("Connector-{0} {1} [{2}:{3}():{4}]: " + string.Format(log, args), Mode, Info.Id, Path.GetFileName(sourceFilePath), member_name, line_number);
+			logger.Debug("Connector-{0} {1} [{2}:{3}():{4}]: " + string.Format(log, args ?? new object[] { }), Mode, Info.Id, Path.GetFileName(sourceFilePath), member_name, line_number);
 		}
 
 		private void LogInfo(string log, params object[] args) {
-			logger.Info("Connector-{0} {1}: " + string.Format(log, args), Mode, Info.Id, log);
+			logger.Info("Connector-{0} {1}: " + string.Format(log, args ?? new object[] { }), Mode, Info.Id, log);
 		}
 
 		private void LogError(Exception e, string log, params object[] args) {
-			logger.Error(e, "Connector-{0} {1}: " + string.Format(log, args), Mode, Info.Id, log);
+			logger.Error(e, "Connector-{0} {1}: " + string.Format(log, args ?? new object[] { }), Mode, Info.Id, log);
 		}
 
 		private void LogWarn(string log, params object[] args) {
-			logger.Warn("Connector-{0} {1}: " + string.Format(log, args), Mode, Info.Id, log);
+			logger.Warn("Connector-{0} {1}: " + string.Format(log, args ?? new object[] { }), Mode, Info.Id, log);
 		}
 
 	}

@@ -41,7 +41,6 @@ namespace DtronixJsonRpc {
 
         public void Start() {
 			listener.Start();
-			logger.Debug("Server: Listening for connections.");
 
 			Task.Factory.StartNew((main_task) => {
 				logger.Debug("Server: Listening for connections.");
@@ -90,7 +89,10 @@ namespace DtronixJsonRpc {
         }
 
         public void Stop(string reason) {
-			logger.Info("Server: Stopping server.");
+			if (cancellation_token_source.IsCancellationRequested) {
+				logger.Debug("Server: Stop requested after server is already in the process of stopping. Reason: {0}", reason);
+			}
+			logger.Info("Server: Stopping server. Reason: {0}", reason);
 			Broadcast(cl => {
                 cl.Disconnect("Server shutdown", JsonRpcSource.Server);
             });
@@ -98,6 +100,7 @@ namespace DtronixJsonRpc {
             cancellation_token_source.Cancel();
 
             listener.Stop();
+
         }
     }
 }
