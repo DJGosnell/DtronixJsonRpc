@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using NLog;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -8,6 +10,8 @@ using System.Threading.Tasks;
 namespace DtronixJsonRpc {
 	public class ActionHandler<THandler> 
 		where THandler : ActionHandler<THandler>, new() {
+
+		private static Logger logger = LogManager.GetCurrentClassLogger();
 
 		private class CalledMethodInfo {
 			public MethodInfo method_info;
@@ -32,11 +36,10 @@ namespace DtronixJsonRpc {
 
 		
 
-		public void ExecuteAction(string method, object obj) {
+		public void ExecuteAction(string method, string data) {
 			CalledMethodInfo called_method_info;
 			object instance_class;
 			var call_parts = method.Split('.');
-			object[] args = new object[] { obj };
 
 			// Get the class.
 			if (instance_cache.TryGetValue(method, out instance_class) == false) {
@@ -81,12 +84,25 @@ namespace DtronixJsonRpc {
                 }
 			}
 
-			if(called_method_info.attribute_info.Source != Connector.Mode) {
+			// Use the first parameter.
+			Type parameter_type = called_method_info.parameter_info[0]?.ParameterType;
+
+			if(parameter_type == null) {
+				throw new InvalidOperationException("Called method does not have a parameter which to pass the data to.");
+			}
+			object json_object;
+			try {
+				json_object = JsonConvert.DeserializeObject(data, parameter_type);
+            } catch (Exception) {
+				throw new InvalidOperationException("Passed parameter for called method could not be read.");
+			}
+
+			if (called_method_info.attribute_info.Source != Connector.Mode) {
 				throw new InvalidOperationException("Method called is not allowed to be called in a " + Connector.Mode.ToString());
 			}
 
 			try {
-				called_method_info.method_info.Invoke(instance_class, args);
+				called_method_info.method_info.Invoke(instance_class, new object[] { json_object });
 
 			} catch (Exception e) {
 				throw e;

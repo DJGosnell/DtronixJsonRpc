@@ -248,15 +248,13 @@ namespace DtronixJsonRpc {
 
 			OnConnect?.Invoke(this, new ClientConnectEventArgs<THandler>(Server, this));
 			while (cancellation_token_source.IsCancellationRequested == false) {
-
-				// Get the type.
-				Task<string> type_task = null;
-				try {
-					type_task = client_reader.ReadLineAsync();//.WithCancellation(cancellation_token_source.Token);
-					type_task.Wait(cancellation_token_source.Token);
+				Task<string> method_task;
+                try {
+					method_task = client_reader.ReadLineAsync();//.WithCancellation(cancellation_token_source.Token);
+					method_task.Wait(cancellation_token_source.Token);
 
 					// See if we have reached the end of the stream.
-					if (type_task.Result == null) {
+					if (method_task.Result == null) {
 						Disconnect("Connection closed", Mode);
 						return;
 					}
@@ -268,27 +266,7 @@ namespace DtronixJsonRpc {
 					return;
 				}
 
-				// PArse the type.
-				Type cli_type;
-				try {
-					cli_type = Type.GetType(type_task.Result);
-				} catch (Exception) {
-					Disconnect("Sent invalid type.", Mode);
-					return;
-				}
-
-				var type_element = cli_type.GetElementType();
-
-				// If the class is not a subclass of one of the models, then something suspicious is going on.
-				var sent_type_subclass = cli_type.IsSubclassOf(typeof(JsonRpcActionArgs));
-				var sent_element_subclass = type_element?.IsSubclassOf(typeof(JsonRpcActionArgs));
-				if (sent_type_subclass == false && sent_element_subclass == false) {
-					Disconnect("Sent invalid type", Mode);
-					return;
-				}
-
-				// Get the method called.
-				var method = client_reader.ReadLine();
+				var method = method_task.Result;
 
 				if (method == null) {
 					Disconnect("Send invalid method", Mode);
@@ -297,29 +275,32 @@ namespace DtronixJsonRpc {
 
 				logger.Debug("{0} CID {1}: Method '{2}' called", Mode, Info.Id, method);
 
-				var json_data = JsonConvert.DeserializeObject(client_reader.ReadLine(), cli_type);
+				var data_task = client_reader.ReadLineAsync();
+				data_task.Wait(cancellation_token_source.Token);
 
 				try {
 					if (method[0] == '$') {
-						ExecuteSpecialAction(method, json_data);
+						ExecuteSpecialAction(method, data_task.Result);
 					} else {
-						Actions.ExecuteAction(method, json_data);
+						Actions.ExecuteAction(method, data_task.Result);
 					}
 				} catch (Exception e) {
-					logger.Error(e, "{0} CID {1}: Called action threw exception", Mode, Info.Id);
+					logger.Error(e, "{0} CID {1}: Called action threw exception: {2}", Mode, Info.Id, e.Message);
 				}
 			}
 		}
 
-		private void ExecuteSpecialAction(string method, object json_data) {
-			switch (method) {
+		private void ExecuteSpecialAction(string method, string data) {
+			ClientInfo[] clients_info;
+            switch (method) {
 				case "$" + nameof(OnConnectedClientChange):
-					OnConnectedClientChange?.Invoke(this, new ConnectedClientChangedEventArgs(json_data as ClientInfo[]));
+					clients_info = JsonConvert.DeserializeObject<ClientInfo[]>(data);
+					OnConnectedClientChange?.Invoke(this, new ConnectedClientChangedEventArgs(clients_info));
 					break;
 
 				case "$" + nameof(OnDisconnect):
-					var ci = json_data as ClientInfo[];
-					Disconnect(ci[0].DisconnectReason, (Mode == JsonRpcSource.Client) ? JsonRpcSource.Server : JsonRpcSource.Client);
+					clients_info = JsonConvert.DeserializeObject<ClientInfo[]>(data);
+					Disconnect(clients_info[0].DisconnectReason, (Mode == JsonRpcSource.Client) ? JsonRpcSource.Server : JsonRpcSource.Client);
 					break;
 			}
 		}
@@ -368,7 +349,7 @@ namespace DtronixJsonRpc {
 			try {
 				lock (lock_object) {
 					try {
-						client_writer.WriteLine(json.GetType().AssemblyQualifiedName);
+						//client_writer.WriteLine(json.GetType().AssemblyQualifiedName);
 						client_writer.WriteLine(method);
 						if (json == null) {
 							client_writer.WriteLine();

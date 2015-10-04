@@ -3,10 +3,12 @@
   "SelectedDateOption": 0,
   "SelectedTypeOption": 1,
   "ShowThreadColumn": false,
-  "ShowExceptionColumn": false,
+  "ShowExceptionColumn": true,
   "UseLazyRebuild": false,
   "UseStackedLayout": true,
-  "UseTighterRows": false
+  "UseTighterRows": true,
+  "DoubleClickToShowExceptions": true,
+  "ShowSourceInformationColumns": true
 }
 ~
 {

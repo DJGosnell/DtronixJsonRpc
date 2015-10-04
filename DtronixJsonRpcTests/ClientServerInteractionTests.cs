@@ -16,10 +16,10 @@ namespace DtronixJsonRpcTests {
 		private JsonRpcServer<TestActionHandler> Server { get; }
 		private JsonRpcConnector<TestActionHandler> Client { get; }
 
-		private List<WaitHandle> waits = new List<WaitHandle>();
+		private List<Tuple<string, WaitHandle>> waits = new List<Tuple<string, WaitHandle>>();
 
 		public ClientServerInteractionTests(ITestOutputHelper output) {
-			var server_stopped_reset = new ManualResetEvent(false);
+			var server_stop_reset = AddWait("Server stop");
 
 			this.output = output;
 			Server = new JsonRpcServer<TestActionHandler>();
@@ -27,23 +27,17 @@ namespace DtronixJsonRpcTests {
 			Client.Info.Username = "DefaultTestClient";
 
 			Server.OnStop += (sender, e) => {
-				server_stopped_reset.Set();
+				server_stop_reset.Set();
 			};
-
-			waits.Add(server_stopped_reset);
-
 		}
 
 		[Fact]
 		public void ServerStartsAndStops() {
-			var server_stated_reset = new ManualResetEvent(false);
-			var server_stopped_reset = new ManualResetEvent(false);
-
-			waits.Add(server_stated_reset);
-			waits.Add(server_stopped_reset);
+			var server_start_reset = AddWait("Server start");
+			var server_stopped_reset = AddWait("Server stop");
 
 			Server.OnStart += (sender, e) => {
-				server_stated_reset.Set();
+				server_start_reset.Set();
 			};
 
 			Server.OnStop += (sender, e) => {
@@ -58,15 +52,15 @@ namespace DtronixJsonRpcTests {
 
 		[Fact]
 		public void ClientConnectsAndDisconnectsStops() {
-			var stated_reset = new ManualResetEvent(false);
-			var stopped_reset = new ManualResetEvent(false);
+			var started_reset = AddWait("Client start");
+			var stopped_reset = AddWait("Client stop");
 
-			var waits = new WaitHandle[] { stated_reset, stopped_reset };
+			var waits = new WaitHandle[] { started_reset, stopped_reset };
 
 
 
 			Client.OnConnect += (sender, e) => {
-				stated_reset.Set();
+				started_reset.Set();
 				Client.Disconnect("Test disconnection", JsonRpcSource.Client);
 			};
 
@@ -84,8 +78,7 @@ namespace DtronixJsonRpcTests {
 
 		[Fact]
 		public void ClientConnectsAndAuthenticates() {
-			var called_method_reset = new ManualResetEvent(false);
-			waits.Add(called_method_reset);
+			var called_method_reset = AddWait("Method call");
 
 			Client.Actions.TestClientActions.MethodCalled += (sender, e) => {
 				if (e.Type == typeof(TestClientActions<TestActionHandler>)) {
@@ -116,11 +109,8 @@ namespace DtronixJsonRpcTests {
 
 		[Fact]
 		public void ClientConnectsAndFailsAuthentication() {
-			var auth_failure_reset = new ManualResetEvent(false);
-			var client_disconnected_reset = new ManualResetEvent(false);
-
-			waits.Add(auth_failure_reset);
-			waits.Add(client_disconnected_reset);
+			var auth_failure_reset = AddWait("Authorization fail");
+			var client_disconnected_reset = AddWait("Client disconnect");
 
 			Client.OnAuthorizationRequest += (sender, e) => {
 				e.Data = "FALSE_AUTHENTICATION_DATA";
@@ -148,8 +138,7 @@ namespace DtronixJsonRpcTests {
 
 		[Fact]
 		public void ServerStartsAndClientConnects() {
-			var called_method_reset = new ManualResetEvent(false);
-			waits.Add(called_method_reset);
+			var called_method_reset = AddWait("Client connect");
 
 			Server.Start();
 
@@ -164,12 +153,11 @@ namespace DtronixJsonRpcTests {
 		
 
 		[Fact]
-		public void ServerCallesClientMethod() {
-			var called_method_reset = new ManualResetEvent(false);
-			waits.Add(called_method_reset);
+		public void ServerCallsClientMethod() {
+			var called_method_reset = AddWait("Method call");
 
 			Server.Start();
-			var random_long = (long)(new Random().NextDouble());
+			var random_long = 1684584139;
 
 			Client.OnConnect += (sender, e) => {
 				Server.Clients[0].Actions.TestClientActions.Test(new TestClientActions<TestActionHandler>.TestClientActionTestArgs() {
@@ -196,9 +184,15 @@ namespace DtronixJsonRpcTests {
 			Client.Connect();
 		}
 
+		private ManualResetEvent AddWait(string description) {
+			var wait = new ManualResetEvent(false);
+			waits.Add(new Tuple<string, WaitHandle>(description, wait));
+			return wait;
+		}
+
 		public void Dispose() {
 			foreach (var wait in waits) {
-				Assert.True(wait.WaitOne(RESET_TIMEOUT));
+				Assert.True(wait.Item2.WaitOne(RESET_TIMEOUT), "Did not activate reset event: " + wait.Item1);
 			}
 		}
 	}
