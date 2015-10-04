@@ -16,7 +16,7 @@ namespace DtronixJsonRpcTests {
 
 
 		public class TestClientActionTestArgs : JsonRpcActionArgs {
-			public int RandomInt { get; set; }
+			public long RandomLong { get; set; }
 		}
 
 		[ActionMethod(JsonRpcSource.Client)]

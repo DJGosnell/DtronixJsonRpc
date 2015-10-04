@@ -10,10 +10,17 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace DtronixJsonRpc {
-    public class JsonRpcServer<THandler> 
+    public class JsonRpcServer<THandler> : IDisposable
 		where THandler : ActionHandler<THandler>, new() {
 
 		private static Logger logger = LogManager.GetCurrentClassLogger();
+
+		public event EventHandler<JsonRpcConnector<THandler>, ConnectorAuthenticationEventArgs> OnAuthenticationVerification;
+
+		public event EventHandler<JsonRpcServer<THandler>> OnStop;
+		public event EventHandler<JsonRpcServer<THandler>> OnStart;
+		public event EventHandler<JsonRpcServer<THandler>, ClientConnectEventArgs<THandler>> OnClientConnect;
+		public event EventHandler<JsonRpcServer<THandler>, ClientDisconnectEventArgs<THandler>> OnClientDisconnect;
 
 		private readonly CancellationTokenSource cancellation_token_source;
         private readonly TcpListener listener;
@@ -21,8 +28,6 @@ namespace DtronixJsonRpc {
         private ConcurrentDictionary<int, JsonRpcConnector<THandler>> clients = new ConcurrentDictionary<int, JsonRpcConnector<THandler>>();
 
         public string Address { get; set; }
-
-        private string token;
 
         public ConcurrentDictionary<int, JsonRpcConnector<THandler>> Clients {
             get {
@@ -32,52 +37,88 @@ namespace DtronixJsonRpc {
 
         private int last_client_id = 0;
 
-        public JsonRpcServer(string password) {
-            token = password;
+		private bool _IsStopping = false;
+
+		public bool IsStopping {
+			get { return _IsStopping; }
+		}
+
+		public JsonRpcServer() : this(IPAddress.Any, 2828) {
+		}
+
+		public JsonRpcServer(int port) : this(IPAddress.Any, port) {
+		}
+
+
+		public JsonRpcServer(IPAddress address, int port) {
             cancellation_token_source = new CancellationTokenSource();
-            listener = new TcpListener(IPAddress.Any, 2828);
+            listener = new TcpListener(address, port);
         }
 
 
         public void Start() {
 			listener.Start();
 
-			Task.Factory.StartNew((main_task) => {
-				logger.Debug("Server: Listening for connections.");
-				while (cancellation_token_source.IsCancellationRequested == false) {
-					
-					var client = listener.AcceptTcpClientAsync();
-					logger.Debug("Server: New client attempting to connect");
-					try {
-						client.Wait();
-
-					} catch (Exception e) {
-						logger.Info(e, "Server: Stopped listening for clients.", null);
-					}
-
-					var client_listener = new JsonRpcConnector<THandler>(this, client.Result, last_client_id++);
-
-                    client_listener.OnDisconnect += (sender, args) => {
-						logger.Info("Server: Client ({0}) disconnected. Reason: {0}", sender.Info.Id, args.Reason);
-						JsonRpcConnector<THandler> removed_client;
-                        clients.TryRemove(sender.Info.Id, out removed_client);
-
-                        Broadcast(cl => cl.Send("$" + nameof(JsonRpcConnector<THandler>.OnConnectedClientChange), new ClientInfo[] { removed_client.Info }));
-                    };
-
-                    clients.TryAdd(client_listener.Info.Id, client_listener);
-
-                    client_listener.Connect();
-
-                }
-
-            }, TaskCreationOptions.LongRunning, cancellation_token_source.Token).ContinueWith(task => {
+			Task.Factory.StartNew(ClientHandler, TaskCreationOptions.LongRunning, cancellation_token_source.Token).ContinueWith(task => {
                 if (cancellation_token_source.IsCancellationRequested) {
                     Broadcast(cl => cl.Send("$" + nameof(JsonRpcConnector<THandler>.OnDisconnect), "Server shutting down."));
                 }
-            }, TaskContinuationOptions.AttachedToParent);
+
+				logger.Info("Server: Stopped");
+			}, TaskContinuationOptions.AttachedToParent);
 
         }
+
+		private void ClientHandler(object main_task) {
+			OnStart?.Invoke(this, this);
+			logger.Debug("Server: Listening for connections.");
+			while (cancellation_token_source.IsCancellationRequested == false) {
+
+				var client = listener.AcceptTcpClientAsync();
+				logger.Debug("Server: New client attempting to connect");
+				try {
+					client.Wait(cancellation_token_source.Token);
+
+				} catch (OperationCanceledException e) {
+					logger.Info(e, "Server: Stopped listening for clients.", null);
+					return;
+
+				} catch (Exception e) {
+
+					logger.Error(e, "Server: Unknown exception occured while listening for clients..", null);
+					return;
+				}
+
+				var client_listener = new JsonRpcConnector<THandler>(this, client.Result, last_client_id++);
+
+				client_listener.OnDisconnect += (sender, args) => {
+					logger.Info("Server: Client ({0}) disconnected. Reason: {1}. Removing from list of active clients.", sender.Info.Id, args.Reason);
+					JsonRpcConnector<THandler> removed_client;
+					clients.TryRemove(sender.Info.Id, out removed_client);
+
+					Broadcast(cl => cl.Send("$" + nameof(JsonRpcConnector<THandler>.OnConnectedClientChange), new ClientInfo[] { removed_client.Info }));
+				};
+
+				client_listener.OnConnect += (sender, e) => {
+					OnClientConnect?.Invoke(this, e);
+				};
+
+				client_listener.OnDisconnect += (sender, e) => {
+					OnClientDisconnect?.Invoke(this, e);
+				};
+
+				if (OnAuthenticationVerification != null) {
+					client_listener.OnAuthorizationVerify += (sender, e) => {
+						OnAuthenticationVerification?.Invoke(sender, e);
+					};
+				}
+
+				clients.TryAdd(client_listener.Info.Id, client_listener);
+
+				client_listener.Connect();
+
+			}
+		}
 
         public void Broadcast(Action<JsonRpcConnector<THandler>> action) {
             foreach (var client in clients) {
@@ -89,18 +130,28 @@ namespace DtronixJsonRpc {
         }
 
         public void Stop(string reason) {
-			if (cancellation_token_source.IsCancellationRequested) {
+			if (_IsStopping) {
 				logger.Debug("Server: Stop requested after server is already in the process of stopping. Reason: {0}", reason);
 			}
+			_IsStopping = true;
+
 			logger.Info("Server: Stopping server. Reason: {0}", reason);
 			Broadcast(cl => {
-                cl.Disconnect("Server shutdown", JsonRpcSource.Server);
+                cl.Disconnect("Server Shutdown. Reason: " + reason, JsonRpcSource.Server);
             });
 
-            cancellation_token_source.Cancel();
+			cancellation_token_source.Cancel();
 
-            listener.Stop();
+			listener.Stop();
 
+			OnStop?.Invoke(this, this);
+
+		}
+
+		public void Dispose() {
+			Stop("Class object disposed");
         }
-    }
+
+		
+	}
 }

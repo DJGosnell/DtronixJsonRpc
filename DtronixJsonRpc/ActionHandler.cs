@@ -34,7 +34,6 @@ namespace DtronixJsonRpc {
 
 		public void ExecuteAction(string method, object obj) {
 			CalledMethodInfo called_method_info;
-			ParameterInfo[] parameter_info;
 			object instance_class;
 			var call_parts = method.Split('.');
 			object[] args = new object[] { obj };
@@ -56,6 +55,7 @@ namespace DtronixJsonRpc {
 			}
 
 			if (called_method_cache.TryGetValue(method, out called_method_info) == false) {
+				called_method_info = new CalledMethodInfo();
 
 				// Get the method.
 				var typ = instance_class.GetType();

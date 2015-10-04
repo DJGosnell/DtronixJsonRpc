@@ -50,9 +50,10 @@
   <ItemGroup>
     <Compile Include="ActionHandler.cs" />
     <Compile Include="ClassExtentions.cs" />
+    <Compile Include="ClientConnectEventArgs.cs" />
     <Compile Include="ClientStatus.cs" />
     <Compile Include="ConnectedClientChangedEventArgs.cs" />
-    <Compile Include="ConnectorAuthroizationEventArgs.cs" />
+    <Compile Include="ConnectorAuthenticationEventArgs.cs" />
     <Compile Include="JsonRpcActionArgs.cs" />
     <Compile Include="ActionMethodAttribute.cs" />
     <Compile Include="JsonRpcActions.cs" />
