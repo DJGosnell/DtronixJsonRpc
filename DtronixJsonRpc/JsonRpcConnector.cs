@@ -319,7 +319,7 @@ namespace DtronixJsonRpc {
 
 				case "$" + nameof(OnDisconnect):
 					var ci = json_data as ClientInfo[];
-					Disconnect(ci[0].DisconnectReason, JsonRpcSource.Server);
+					Disconnect(ci[0].DisconnectReason, (Mode == JsonRpcSource.Client) ? JsonRpcSource.Server : JsonRpcSource.Client);
 					break;
 			}
 		}
@@ -365,25 +365,30 @@ namespace DtronixJsonRpc {
 			}
 
 			logger.Debug("{0} CID {1}: Sending method '{2}'", Mode, Info.Id, method);
-
-			lock (lock_object) {
-				try {
-					client_writer.WriteLine(json.GetType().AssemblyQualifiedName);
-					client_writer.WriteLine(method);
-					if (json == null) {
-						client_writer.WriteLine();
-					} else {
-						client_writer.WriteLine(JsonConvert.SerializeObject(json));
+			try {
+				lock (lock_object) {
+					try {
+						client_writer.WriteLine(json.GetType().AssemblyQualifiedName);
+						client_writer.WriteLine(method);
+						if (json == null) {
+							client_writer.WriteLine();
+						} else {
+							client_writer.WriteLine(JsonConvert.SerializeObject(json));
+						}
+						client_writer.Flush();
+					} catch (ObjectDisposedException) {
+						logger.Warn("{0} CID {1}: Tried to write to the stream when the client was closed.", Mode, Info.Id);
+						// The client was closed.  
+						return;
 					}
-					client_writer.Flush();
-				} catch (ObjectDisposedException) {
-					logger.Warn("{0} CID {1}: Tried to write to the stream when the client was closed.", Mode, Info.Id);
-					// The client was closed.  
-					return;
-				}
 
+				}
+			} catch (IOException e) {
+				logger.Error(e, "Exception occured when trying to write to the stream.");
+				Disconnect("Writing error to stream.", Mode);
 			}
 
+		
 		}
 
 		public void Dispose() {

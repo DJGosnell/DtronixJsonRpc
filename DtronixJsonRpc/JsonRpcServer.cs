@@ -57,7 +57,13 @@ namespace DtronixJsonRpc {
 
 
         public void Start() {
-			listener.Start();
+			try {
+
+				logger.Info("Server: Starting");
+				listener.Start();
+			} catch (Exception) {
+				throw;
+			}
 
 			Task.Factory.StartNew(ClientHandler, TaskCreationOptions.LongRunning, cancellation_token_source.Token).ContinueWith(task => {
                 if (cancellation_token_source.IsCancellationRequested) {
@@ -91,20 +97,18 @@ namespace DtronixJsonRpc {
 
 				var client_listener = new JsonRpcConnector<THandler>(this, client.Result, last_client_id++);
 
-				client_listener.OnDisconnect += (sender, args) => {
-					logger.Info("Server: Client ({0}) disconnected. Reason: {1}. Removing from list of active clients.", sender.Info.Id, args.Reason);
+				client_listener.OnDisconnect += (sender, e) => {
+					logger.Info("Server: Client ({0}) disconnected. Reason: {1}. Removing from list of active clients.", sender.Info.Id, e.Reason);
 					JsonRpcConnector<THandler> removed_client;
 					clients.TryRemove(sender.Info.Id, out removed_client);
 
 					Broadcast(cl => cl.Send("$" + nameof(JsonRpcConnector<THandler>.OnConnectedClientChange), new ClientInfo[] { removed_client.Info }));
+
+					OnClientDisconnect?.Invoke(this, e);
 				};
 
 				client_listener.OnConnect += (sender, e) => {
 					OnClientConnect?.Invoke(this, e);
-				};
-
-				client_listener.OnDisconnect += (sender, e) => {
-					OnClientDisconnect?.Invoke(this, e);
 				};
 
 				if (OnAuthenticationVerification != null) {
@@ -137,7 +141,9 @@ namespace DtronixJsonRpc {
 
 			logger.Info("Server: Stopping server. Reason: {0}", reason);
 			Broadcast(cl => {
-                cl.Disconnect("Server Shutdown. Reason: " + reason, JsonRpcSource.Server);
+				if (cl.Info.Status != ClientStatus.Disconnecting) {
+					cl.Disconnect("Server Shutdown. Reason: " + reason, JsonRpcSource.Server);
+				}
             });
 
 			cancellation_token_source.Cancel();

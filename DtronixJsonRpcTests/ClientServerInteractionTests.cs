@@ -4,9 +4,10 @@ using DtronixJsonRpc;
 using Xunit.Abstractions;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Collections.Generic;
 
 namespace DtronixJsonRpcTests {
-	public class ClientServerInteractionTests {
+	public class ClientServerInteractionTests : IDisposable {
 
 		private const int RESET_TIMEOUT = 5000;
 
@@ -15,11 +16,22 @@ namespace DtronixJsonRpcTests {
 		private JsonRpcServer<TestActionHandler> Server { get; }
 		private JsonRpcConnector<TestActionHandler> Client { get; }
 
+		private List<WaitHandle> waits = new List<WaitHandle>();
+
 		public ClientServerInteractionTests(ITestOutputHelper output) {
+			var server_stopped_reset = new ManualResetEvent(false);
+
 			this.output = output;
 			Server = new JsonRpcServer<TestActionHandler>();
 			Client = new JsonRpcConnector<TestActionHandler>("localhost");
 			Client.Info.Username = "DefaultTestClient";
+
+			Server.OnStop += (sender, e) => {
+				server_stopped_reset.Set();
+			};
+
+			waits.Add(server_stopped_reset);
+
 		}
 
 		[Fact]
@@ -27,7 +39,8 @@ namespace DtronixJsonRpcTests {
 			var server_stated_reset = new ManualResetEvent(false);
 			var server_stopped_reset = new ManualResetEvent(false);
 
-			var waits = new WaitHandle[] { server_stated_reset, server_stopped_reset };
+			waits.Add(server_stated_reset);
+			waits.Add(server_stopped_reset);
 
 			Server.OnStart += (sender, e) => {
 				server_stated_reset.Set();
@@ -37,12 +50,10 @@ namespace DtronixJsonRpcTests {
 				server_stopped_reset.Set();
 			};
 
+
 			Server.Start();
 			Server.Stop("Test completed");
 
-			foreach (var wait in waits) {
-				Assert.True(wait.WaitOne(RESET_TIMEOUT));
-			}
 		}
 
 		[Fact]
@@ -63,26 +74,24 @@ namespace DtronixJsonRpcTests {
 				stopped_reset.Set();
 			};
 
+			Server.OnClientDisconnect += (sender, e) => {
+				Server.Stop("Test completed");
+			};
+
 			Server.Start();
-			Client.Connect();
-
-			foreach (var wait in waits) {
-				Assert.True(wait.WaitOne(RESET_TIMEOUT));
-			}
-
-			Server.Stop("Test completed");
+			Client.Connect();				
 		}
 
 		[Fact]
 		public void ClientConnectsAndAuthenticates() {
 			var called_method_reset = new ManualResetEvent(false);
-			var waits = new WaitHandle[] { called_method_reset };
-
+			waits.Add(called_method_reset);
 
 			Client.Actions.TestClientActions.MethodCalled += (sender, e) => {
 				if (e.Type == typeof(TestClientActions<TestActionHandler>)) {
 					if (e.Method == "Test") {
 						called_method_reset.Set();
+						Server.Stop("Test completed");
 					}
 				}
 
@@ -100,14 +109,9 @@ namespace DtronixJsonRpcTests {
 				e.Authenticated = e.Data == "AUTHENTICATION_DATA";
 			};
 
+
 			Server.Start();
 			Client.Connect();
-
-			foreach (var wait in waits) {
-				Assert.True(wait.WaitOne(RESET_TIMEOUT));
-			}
-
-			Server.Stop("Test completed");
 		}
 
 		[Fact]
@@ -115,7 +119,8 @@ namespace DtronixJsonRpcTests {
 			var auth_failure_reset = new ManualResetEvent(false);
 			var client_disconnected_reset = new ManualResetEvent(false);
 
-			var waits = new WaitHandle[] { auth_failure_reset, client_disconnected_reset };
+			waits.Add(auth_failure_reset);
+			waits.Add(client_disconnected_reset);
 
 			Client.OnAuthorizationRequest += (sender, e) => {
 				e.Data = "FALSE_AUTHENTICATION_DATA";
@@ -127,41 +132,42 @@ namespace DtronixJsonRpcTests {
 
 			Client.OnDisconnect += (sender, e) => {
 				client_disconnected_reset.Set();
-            };
+				Server.Stop("Test completed");
+			};
 
 			Server.OnAuthenticationVerification += (sender, e) => {
 				e.Authenticated = false;
 			};
 
+
 			Server.Start();
 			Client.Connect();
 
-			foreach (var wait in waits) {
-				Assert.True(wait.WaitOne(RESET_TIMEOUT));
-			}
 
-			Server.Stop("Test completed");
 		}
 
 		[Fact]
 		public void ServerStartsAndClientConnects() {
 			var called_method_reset = new ManualResetEvent(false);
+			waits.Add(called_method_reset);
+
 			Server.Start();
 
 			Client.OnConnect += (sender, e) => {
 				called_method_reset.Set();
+				Server.Stop("Test completed");
 			};
-			
-			Client.Connect();
 
-			Assert.True(called_method_reset.WaitOne(RESET_TIMEOUT));
-			Server.Stop("Test completed");
+
+			Client.Connect();
 		}
 		
 
 		[Fact]
 		public void ServerCallesClientMethod() {
 			var called_method_reset = new ManualResetEvent(false);
+			waits.Add(called_method_reset);
+
 			Server.Start();
 			var random_long = (long)(new Random().NextDouble());
 
@@ -176,15 +182,24 @@ namespace DtronixJsonRpcTests {
 					if (e.Method == "Test") {
 						Assert.Equal(random_long, ((TestClientActions<TestActionHandler>.TestClientActionTestArgs)e.Arguments).RandomLong);
 						called_method_reset.Set();
+						Client.Disconnect("Test completed", JsonRpcSource.Client);
 					}
 				}
 			
 			};
 
+			Server.OnClientDisconnect += (sender, e) => {
+				Server.Stop("Test completed");
+			};
+
 
 			Client.Connect();
-			Assert.True(called_method_reset.WaitOne(RESET_TIMEOUT), "Test did not complete in a timely mannor.");
-			Server.Stop("Test completed");
+		}
+
+		public void Dispose() {
+			foreach (var wait in waits) {
+				Assert.True(wait.WaitOne(RESET_TIMEOUT));
+			}
 		}
 	}
 }
