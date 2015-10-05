@@ -22,9 +22,15 @@ namespace DtronixJsonRpcTests {
 		[ActionMethod(JsonRpcSource.Client)]
 		public void Test(TestClientActionTestArgs args) {
 			if (SendAndReceived(args, nameof(TestClientActions<THandler>))) {
-
 				MethodCalled?.Invoke(this, new TestClientMethodCalledEventArgs(args, GetType()));
-                Debug.WriteLine("Received dummy information from the server!");
+			}
+
+		}
+
+		[ActionMethod(JsonRpcSource.Client)]
+		public void Test2(TestClientActionTestArgs args) {
+			if (SendAndReceived(args, nameof(TestClientActions<THandler>))) {
+				MethodCalled?.Invoke(this, new TestClientMethodCalledEventArgs(args, GetType()));
 			}
 
 		}

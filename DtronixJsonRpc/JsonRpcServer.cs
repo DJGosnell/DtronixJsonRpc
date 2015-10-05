@@ -108,6 +108,8 @@ namespace DtronixJsonRpc {
 				};
 
 				client_listener.OnConnect += (sender, e) => {
+					logger.Info("Server: Client ({0}) Connected with username {1}", sender.Info.Id, e.Client.Info.Username);
+					
 					OnClientConnect?.Invoke(this, e);
 				};
 

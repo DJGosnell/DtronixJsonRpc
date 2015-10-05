@@ -38,6 +38,7 @@ namespace DtronixJsonRpcTests {
 
 			Server.OnStart += (sender, e) => {
 				server_start_reset.Set();
+				Server.Stop("Test completed");
 			};
 
 			Server.OnStop += (sender, e) => {
@@ -45,8 +46,7 @@ namespace DtronixJsonRpcTests {
 			};
 
 
-			Server.Start();
-			Server.Stop("Test completed");
+			StartServerConnectClient();
 
 		}
 
@@ -54,10 +54,6 @@ namespace DtronixJsonRpcTests {
 		public void ClientConnectsAndDisconnectsStops() {
 			var started_reset = AddWait("Client start");
 			var stopped_reset = AddWait("Client stop");
-
-			var waits = new WaitHandle[] { started_reset, stopped_reset };
-
-
 
 			Client.OnConnect += (sender, e) => {
 				started_reset.Set();
@@ -72,8 +68,7 @@ namespace DtronixJsonRpcTests {
 				Server.Stop("Test completed");
 			};
 
-			Server.Start();
-			Client.Connect();				
+			StartServerConnectClient();
 		}
 
 		[Fact]
@@ -103,8 +98,7 @@ namespace DtronixJsonRpcTests {
 			};
 
 
-			Server.Start();
-			Client.Connect();
+			StartServerConnectClient();
 		}
 
 		[Fact]
@@ -129,26 +123,20 @@ namespace DtronixJsonRpcTests {
 				e.Authenticated = false;
 			};
 
-
-			Server.Start();
-			Client.Connect();
-
-
+			StartServerConnectClient();
 		}
 
 		[Fact]
 		public void ServerStartsAndClientConnects() {
 			var called_method_reset = AddWait("Client connect");
 
-			Server.Start();
 
 			Client.OnConnect += (sender, e) => {
 				called_method_reset.Set();
 				Server.Stop("Test completed");
 			};
 
-
-			Client.Connect();
+			StartServerConnectClient();
 		}
 		
 
@@ -156,7 +144,7 @@ namespace DtronixJsonRpcTests {
 		public void ServerCallsClientMethod() {
 			var called_method_reset = AddWait("Method call");
 
-			Server.Start();
+			
 			var random_long = 1684584139;
 
 			Client.OnConnect += (sender, e) => {
@@ -180,9 +168,75 @@ namespace DtronixJsonRpcTests {
 				Server.Stop("Test completed");
 			};
 
+			StartServerConnectClient();
 
-			Client.Connect();
 		}
+
+
+
+
+		[Fact]
+		public void MultipleClientConnections() {
+
+			
+			List<JsonRpcConnector<TestActionHandler>> clients = new List<JsonRpcConnector<TestActionHandler>>();
+			var random_long = 1684584139;
+
+			Server.OnStart += (sender, e) => {
+				for (int i = 0; i < 4; i++) {
+					var called_method_reset = AddWait("Method call");
+					
+					var client = new JsonRpcConnector<TestActionHandler>("localhost");
+					client.Info.Username = "DefaultTestClient" + i;
+
+					client.Actions.TestClientActions.MethodCalled += (sender2, e2) => {
+						if (e2.Type == typeof(TestClientActions<TestActionHandler>)) {
+							if (e2.Method == "Test") {
+								Assert.Equal(random_long + sender2.Connector.Info.Id, ((TestClientActions<TestActionHandler>.TestClientActionTestArgs)e2.Arguments).RandomLong);
+								called_method_reset.Set();
+								//client.Disconnect("Client test completed", JsonRpcSource.Client);
+							}
+						}
+
+					};
+
+					client.Connect();
+				}
+			};
+
+
+			Server.OnClientConnect += (sender2, e2) => {
+				e2.Client.Actions.TestClientActions.Test(new TestClientActions<TestActionHandler>.TestClientActionTestArgs() {
+					RandomLong = random_long + e2.Client.Info.Id
+				});
+			};
+
+
+			Server.Start();
+
+			foreach (var wait in waits) {
+				wait.Item2.WaitOne(RESET_TIMEOUT);
+			}
+
+			Server.Stop("Test completed");
+
+
+
+
+        }
+
+		/// <summary>
+		/// Helper to start the server and start the client once the server has loaded.
+		/// </summary>
+		private void StartServerConnectClient() {
+			Server.OnStart += (sender, e) => {
+				Client.Connect();
+			};
+
+
+			Server.Start();
+		}
+
 
 		private ManualResetEvent AddWait(string description) {
 			var wait = new ManualResetEvent(false);

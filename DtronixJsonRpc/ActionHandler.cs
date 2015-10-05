@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using NLog;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -27,9 +28,9 @@ namespace DtronixJsonRpc {
 			loaded_actions.Add( actions)
         }*/
 
-		private static Dictionary<string, CalledMethodInfo> called_method_cache = new Dictionary<string, CalledMethodInfo>();
-		private static Dictionary<string, MethodInfo> method_cache = new Dictionary<string, MethodInfo>();
-		private static Dictionary<string, ParameterInfo[]> method_parameter_cache = new Dictionary<string, ParameterInfo[]>();
+			
+
+		private static ConcurrentDictionary<string, CalledMethodInfo> called_method_cache = new ConcurrentDictionary<string, CalledMethodInfo>();
 		private static object method_cache_lock = new object();
 
 		private Dictionary<string, object> instance_cache = new Dictionary<string, object>();
@@ -79,9 +80,8 @@ namespace DtronixJsonRpc {
 					throw new InvalidOperationException("Method requested by the server is not allowed to be called.");
 				}
 
-				lock (method_cache_lock) {
-					called_method_cache.Add(method, called_method_info);
-                }
+				called_method_cache.TryAdd(method, called_method_info);
+
 			}
 
 			// Use the first parameter.
