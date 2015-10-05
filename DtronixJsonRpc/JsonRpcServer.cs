@@ -65,27 +65,14 @@ namespace DtronixJsonRpc {
 				throw;
 			}
 
-			Task.Factory.StartNew(ClientHandler, TaskCreationOptions.LongRunning, cancellation_token_source.Token).ContinueWith(task => {
-                if (cancellation_token_source.IsCancellationRequested) {
-                    Broadcast(cl => cl.Send("$" + nameof(JsonRpcConnector<THandler>.OnDisconnect), "Server shutting down."));
-                }
-
-				logger.Info("Server: Stopped");
-			}, TaskContinuationOptions.AttachedToParent);
-
-        }
-
-		private void ClientHandler(object main_task) {
-			OnStart?.Invoke(this, this);
 			logger.Debug("Server: Listening for connections.");
+			OnStart?.Invoke(this, this);
 			while (cancellation_token_source.IsCancellationRequested == false) {
-
 				var client = listener.AcceptTcpClientAsync();
-				logger.Debug("Server: New client attempting to connect");
 				try {
 					client.Wait(cancellation_token_source.Token);
-
-				} catch (OperationCanceledException e) {
+                    logger.Debug("Server: New client attempting to connect");
+                } catch (OperationCanceledException e) {
 					logger.Info(e, "Server: Stopped listening for clients.", null);
 					return;
 
@@ -109,7 +96,7 @@ namespace DtronixJsonRpc {
 
 				client_listener.OnConnect += (sender, e) => {
 					logger.Info("Server: Client ({0}) Connected with username {1}", sender.Info.Id, e.Client.Info.Username);
-					
+
 					OnClientConnect?.Invoke(this, e);
 				};
 
@@ -124,7 +111,14 @@ namespace DtronixJsonRpc {
 				client_listener.Connect();
 
 			}
-		}
+
+			if (cancellation_token_source.IsCancellationRequested) {
+				Broadcast(cl => cl.Send("$" + nameof(JsonRpcConnector<THandler>.OnDisconnect), "Server shutting down."));
+			}
+
+			logger.Info("Server: Stopped");
+        }
+
 
         public void Broadcast(Action<JsonRpcConnector<THandler>> action) {
             foreach (var client in clients) {

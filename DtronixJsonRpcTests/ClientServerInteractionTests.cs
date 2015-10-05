@@ -200,7 +200,7 @@ namespace DtronixJsonRpcTests {
 
 					};
 
-					client.Connect();
+                    Task.Run(() => client.Connect());
 				}
 			};
 
@@ -230,7 +230,8 @@ namespace DtronixJsonRpcTests {
 		/// </summary>
 		private void StartServerConnectClient() {
 			Server.OnStart += (sender, e) => {
-				Client.Connect();
+				Task.Run(() => Client.Connect());
+				
 			};
 
 
