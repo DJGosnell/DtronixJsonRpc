@@ -36,7 +36,7 @@ namespace DtronixJsonRpcTests {
 		}
 
 		[Fact]
-		public void CallMethodBenchmark() {
+		public void ClientCallMethodBenchmark() {
             Stopwatch sw;
             int itterations = 1000;
             Server.OnClientConnect += (sender, e) => {
@@ -56,11 +56,10 @@ namespace DtronixJsonRpcTests {
 		}
 
         [Fact]
-        public void ConcurrentCallMethodBenchmark() {
-            Stopwatch sw;
+        public void ClientConcurrentCallMethodBenchmark() {
             int itterations = 1000;
+
             Server.OnClientConnect += (sender, e) => {
-                sw = Stopwatch.StartNew();
                 Parallel.For(0, itterations, (i) => {
                     e.Client.Actions.TestBenchmarkActions.TimeBetweenCalls((new TestBenchmarkActions<TestActionHandler>.TimeBetweenCallsArgs() { MaxCalls = itterations }));
                 });
@@ -72,6 +71,49 @@ namespace DtronixJsonRpcTests {
 
 
             StartServerConnectClient();
+
+        }
+
+        [Fact]
+        public void ServerCallMethodBenchmark() {
+
+            int itterations = 100;
+            int clients = 8;
+            var client_list = new List<JsonRpcConnector<TestActionHandler>>();
+
+            Server.OnStart += (sender, e) => {
+				for (int i = 0; i < clients; i++) {
+					Task.Factory.StartNew((object number) => {
+						var client = new JsonRpcConnector<TestActionHandler>("localhost");
+						client_list.Add(client);
+						client.Info.Username = "DefaultTestClient" + number;
+
+						client.OnConnect += (sender2, e2) => {
+							for (int j = 0; j < itterations; j++) {
+								sender2.Actions.TestBenchmarkActions.TimeBetweenCalls((new TestBenchmarkActions<TestActionHandler>.TimeBetweenCallsArgs() { MaxCalls = itterations }));
+							}
+						};
+
+						client.Connect();
+					}, i);
+				}
+            };
+
+            Server.OnClientDisconnect += (sender, e) => {
+                if(TestBenchmarkActions<TestActionHandler>.call_times == (itterations * clients)){
+                    sender.Stop("Test completed");
+                }
+            };
+
+
+            Server.Start();
+
+            Server.OnStart += (sender, e) => {
+                Task.Run(() => Client.Connect());
+
+            };
+
+
 
         }
 

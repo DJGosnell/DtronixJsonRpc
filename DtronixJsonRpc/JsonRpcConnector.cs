@@ -32,7 +32,6 @@ namespace DtronixJsonRpc {
 
         private BlockingCollection<byte[]> write_queue = new BlockingCollection<byte[]>();
 
-
         public THandler Actions { get; }
 
 		private object lock_object = new object();
