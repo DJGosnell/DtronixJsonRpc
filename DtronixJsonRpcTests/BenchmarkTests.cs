@@ -36,7 +36,7 @@ namespace DtronixJsonRpcTests {
 		}
 
 		[Fact]
-		public void CallMethodBenchmark() {
+		public void ClientCallMethodBenchmark() {
             Stopwatch sw;
             int itterations = 1000;
             Server.OnClientConnect += (sender, e) => {
@@ -56,7 +56,7 @@ namespace DtronixJsonRpcTests {
 		}
 
         [Fact]
-        public void ConcurrentCallMethodBenchmark() {
+        public void ClientConcurrentCallMethodBenchmark() {
             Stopwatch sw;
             int itterations = 1000;
             Server.OnClientConnect += (sender, e) => {

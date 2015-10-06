@@ -97,7 +97,7 @@ namespace DtronixJsonRpc {
 				throw new InvalidOperationException("Passed parameter for called method could not be read.");
 			}
 
-			if (called_method_info.attribute_info.Source != Connector.Mode) {
+			if (called_method_info.attribute_info.Source != JsonRpcSource.Unset && called_method_info.attribute_info.Source != Connector.Mode) {
 				throw new InvalidOperationException("Method called is not allowed to be called in a " + Connector.Mode.ToString());
 			}
 
