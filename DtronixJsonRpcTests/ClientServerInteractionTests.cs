@@ -183,7 +183,7 @@ namespace DtronixJsonRpcTests {
             var random_long = 1684584139;
             var client_list = new List<JsonRpcConnector<TestActionHandler>>();
             var wait_list = new List<ManualResetEvent>();
-            int client_count = 10;
+            int client_count = 20;
             for (int i = 0; i < client_count; i++) {
                 wait_list.Add(AddWait("Method call"));
             }
@@ -210,10 +210,6 @@ namespace DtronixJsonRpcTests {
                         Task.Run(() => client.Connect());
                     }, i);
                 }
-
-
-
-
             };
 
             Server.OnClientConnect += (sender2, e2) => {
@@ -234,14 +230,29 @@ namespace DtronixJsonRpcTests {
             }
 
             Server.Stop("Test completed");
-
-
         }
 
-		/// <summary>
-		/// Helper to start the server and start the client once the server has loaded.
-		/// </summary>
-		private void StartServerConnectClient() {
+        /*[Fact]
+        public void BenchmarkClientCallMethod() {
+
+            Server.OnClientConnect += (sender, e) => {
+                e.Client.Actions.TestClientActions.Test(new TestClientActions<TestActionHandler>.TestClientActionTestArgs() {
+                    RandomLong = e.Client.Info.Id
+                });
+            };
+
+
+            StartServerConnectClient()
+
+            Server.Stop("Test completed");
+
+
+        }*/
+
+        /// <summary>
+        /// Helper to start the server and start the client once the server has loaded.
+        /// </summary>
+        private void StartServerConnectClient() {
 			Server.OnStart += (sender, e) => {
 				Task.Run(() => Client.Connect());
 				

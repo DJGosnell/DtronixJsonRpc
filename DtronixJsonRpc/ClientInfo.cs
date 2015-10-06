@@ -16,7 +16,7 @@ namespace DtronixJsonRpc{
 		public string Username {
 			get { return _Username; }
 			set {
-				if (value.Length > 64) {
+				if (value?.Length > 64) {
 					throw new InvalidOperationException("Username must be under 64 characters.");
 				}
 
