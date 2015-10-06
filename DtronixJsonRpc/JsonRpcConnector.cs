@@ -10,6 +10,7 @@ using Newtonsoft.Json;
 using System.Diagnostics;
 using DtronixJsonRpc;
 using NLog;
+using System.Collections.Concurrent;
 
 namespace DtronixJsonRpc {
 	public class JsonRpcConnector<THandler> : IDisposable
@@ -220,6 +221,7 @@ namespace DtronixJsonRpc {
 
                 OnConnect?.Invoke(this, new ClientConnectEventArgs<THandler>(Server, this));
 
+                WriteLoop();
 
                 while (cancellation_token_source.IsCancellationRequested == false) {
                     Task<string> method_task;
@@ -345,6 +347,28 @@ namespace DtronixJsonRpc {
 			logger.Info("{0} CID {1}: Stopped", Mode, Info.Id);
 		}
 
+        private BlockingCollection<byte[]> write_queue = new BlockingCollection<byte[]>();
+
+        private void WriteLoop() {
+            Task.Factory.StartNew(() => {
+                try {
+                    foreach (byte[] buffer in write_queue.GetConsumingEnumerable(cancellation_token_source.Token)) {
+                        if (client.Client.Connected == false) {
+                            return;
+                        }
+
+                        base_stream.Write(buffer, 0, buffer.Length);
+                    }
+                } catch (OperationCanceledException) {
+                    return;
+                } catch (Exception e) {
+                    logger.Error(e, "{0} CID {1}: Unknown error occured while writing to the stream.", Mode, Info.Id);
+                    throw;
+                }
+   
+            }, TaskCreationOptions.LongRunning);
+        }
+
 
         public void Send(string method, object json = null) {
             if (cancellation_token_source.IsCancellationRequested) {
@@ -362,16 +386,19 @@ namespace DtronixJsonRpc {
 
             logger.Debug("{0} CID {1}: Sending method '{2}'", Mode, Info.Id, method);
             try {
+                
                 lock (lock_object) {
-
+                    write_queue.Add(Encoding.UTF8.GetBytes(method + "\r\n"));
                     //client_writer.WriteLine(json.GetType().AssemblyQualifiedName);
-                    client_writer.WriteLine(method);
+                    //client_writer.WriteLine(method);
                     if (json == null) {
-                        client_writer.WriteLine();
+                        write_queue.Add(Encoding.UTF8.GetBytes("\r\n"));
+                        //client_writer.WriteLine();
                     } else {
-                        client_writer.WriteLine(JsonConvert.SerializeObject(json));
+                        write_queue.Add(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(json) + "\r\n"));
+                        //client_writer.WriteLine(JsonConvert.SerializeObject(json));
                     }
-                    client_writer.Flush();
+                    //client_writer.Flush();
                 }
 
             } catch (IOException e) {

@@ -175,52 +175,65 @@ namespace DtronixJsonRpcTests {
 
 
 
-		[Fact]
-		public void MultipleClientConnections() {
-
-			
-			List<JsonRpcConnector<TestActionHandler>> clients = new List<JsonRpcConnector<TestActionHandler>>();
-			var random_long = 1684584139;
-
-			Server.OnStart += (sender, e) => {
-				for (int i = 0; i < 4; i++) {
-					var called_method_reset = AddWait("Method call");
-					
-					var client = new JsonRpcConnector<TestActionHandler>("localhost");
-					client.Info.Username = "DefaultTestClient" + i;
-
-					client.Actions.TestClientActions.MethodCalled += (sender2, e2) => {
-						if (e2.Type == typeof(TestClientActions<TestActionHandler>)) {
-							if (e2.Method == "Test") {
-								Assert.Equal(random_long + sender2.Connector.Info.Id, ((TestClientActions<TestActionHandler>.TestClientActionTestArgs)e2.Arguments).RandomLong);
-								called_method_reset.Set();
-								//client.Disconnect("Client test completed", JsonRpcSource.Client);
-							}
-						}
-
-					};
-
-                    Task.Run(() => client.Connect());
-				}
-			};
+        [Fact]
+        public void MultipleClientConnections() {
 
 
-			Server.OnClientConnect += (sender2, e2) => {
-				e2.Client.Actions.TestClientActions.Test(new TestClientActions<TestActionHandler>.TestClientActionTestArgs() {
-					RandomLong = random_long + e2.Client.Info.Id
-				});
-			};
+            List<JsonRpcConnector<TestActionHandler>> clients = new List<JsonRpcConnector<TestActionHandler>>();
+            var random_long = 1684584139;
+            var client_list = new List<JsonRpcConnector<TestActionHandler>>();
+            var wait_list = new List<ManualResetEvent>();
+            int client_count = 10;
+            for (int i = 0; i < client_count; i++) {
+                wait_list.Add(AddWait("Method call"));
+            }
+
+            Server.OnStart += (sender, e) => {
+
+                for (int i = 0; i < client_count; i++) {
+                    Task.Factory.StartNew((object state) => {
+                        var client = new JsonRpcConnector<TestActionHandler>("localhost");
+                        client_list.Add(client);
+                        client.Info.Username = "DefaultTestClient" + (int)state;
+
+                        client.Actions.TestClientActions.MethodCalled += (sender2, e2) => {
+                            if (e2.Type == typeof(TestClientActions<TestActionHandler>)) {
+                                if (e2.Method == "Test") {
+                                    Assert.Equal(random_long + sender2.Connector.Info.Id, ((TestClientActions<TestActionHandler>.TestClientActionTestArgs)e2.Arguments).RandomLong);
+                                    wait_list[(int)state].Set();
+                                    client.Disconnect("Client test completed", JsonRpcSource.Client);
+                                }
+                            }
+
+                        };
+
+                        Task.Run(() => client.Connect());
+                    }, i);
+                }
 
 
-			Server.Start();
-
-			foreach (var wait in waits) {
-				wait.Item2.WaitOne(RESET_TIMEOUT);
-			}
-
-			Server.Stop("Test completed");
 
 
+            };
+
+            Server.OnClientConnect += (sender2, e2) => {
+                e2.Client.Actions.TestClientActions.Test(new TestClientActions<TestActionHandler>.TestClientActionTestArgs() {
+                    RandomLong = random_long + e2.Client.Info.Id
+                });
+            };
+
+            Task.Run(() => Server.Start());
+
+
+            foreach (var wait in waits) {
+                if(wait.Item1 == "Server stop") {
+                    continue;
+                }
+
+                Assert.True(wait.Item2.WaitOne(RESET_TIMEOUT), "Did not activate reset event: " + wait.Item1);
+            }
+
+            Server.Stop("Test completed");
 
 
         }
@@ -246,9 +259,12 @@ namespace DtronixJsonRpcTests {
 		}
 
 		public void Dispose() {
-			foreach (var wait in waits) {
+
+            foreach (var wait in waits) {
 				Assert.True(wait.Item2.WaitOne(RESET_TIMEOUT), "Did not activate reset event: " + wait.Item1);
 			}
-		}
+
+            
+        }
 	}
 }

@@ -74,13 +74,12 @@ namespace DtronixJsonRpc {
                     logger.Debug("Server: New client attempting to connect");
                 } catch (OperationCanceledException e) {
 					logger.Info(e, "Server: Stopped listening for clients.", null);
-					return;
+                    break;
 
 				} catch (Exception e) {
-
 					logger.Error(e, "Server: Unknown exception occured while listening for clients..", null);
-					return;
-				}
+                    break;
+                }
 
 				var client_listener = new JsonRpcConnector<THandler>(this, client.Result, last_client_id++);
 
@@ -108,9 +107,9 @@ namespace DtronixJsonRpc {
 
 				clients.TryAdd(client_listener.Info.Id, client_listener);
 
-				client_listener.Connect();
+                Task.Factory.StartNew(() => client_listener.Connect(), TaskCreationOptions.LongRunning);
 
-			}
+            }
 
 			if (cancellation_token_source.IsCancellationRequested) {
 				Broadcast(cl => cl.Send("$" + nameof(JsonRpcConnector<THandler>.OnDisconnect), "Server shutting down."));
