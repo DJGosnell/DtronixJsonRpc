@@ -232,23 +232,6 @@ namespace DtronixJsonRpcTests {
             Server.Stop("Test completed");
         }
 
-        /*[Fact]
-        public void BenchmarkClientCallMethod() {
-
-            Server.OnClientConnect += (sender, e) => {
-                e.Client.Actions.TestClientActions.Test(new TestClientActions<TestActionHandler>.TestClientActionTestArgs() {
-                    RandomLong = e.Client.Info.Id
-                });
-            };
-
-
-            StartServerConnectClient()
-
-            Server.Stop("Test completed");
-
-
-        }*/
-
         /// <summary>
         /// Helper to start the server and start the client once the server has loaded.
         /// </summary>
