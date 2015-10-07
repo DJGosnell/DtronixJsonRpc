@@ -27,14 +27,16 @@ namespace DtronixJsonRpc {
 
 		private TcpClient client;
 		private NetworkStream base_stream;
-		//private StreamWriter client_writer;
 		private StreamReader client_reader;
 
         private BlockingCollection<byte[]> write_queue = new BlockingCollection<byte[]>();
 
         public THandler Actions { get; }
 
-		private object lock_object = new object();
+		/// <summary>
+		/// Object that is referenced by the action handlers.
+		/// </summary>
+		public object DataObject { get; set; }
 
 		public event EventHandler<JsonRpcConnector<THandler>, ClientDisconnectEventArgs<THandler>> OnDisconnect;
 		public event EventHandler<JsonRpcConnector<THandler>, ClientConnectEventArgs<THandler>> OnConnect;
@@ -318,7 +320,15 @@ namespace DtronixJsonRpc {
 			}
 		}
 
-		public void Disconnect(string reason, JsonRpcSource source, SocketError socket_error = SocketError.Success) {
+		public void Disconnect(string reason) {
+			Disconnect(reason, Mode, SocketError.Success);
+		}
+
+		public void Disconnect(string reason, JsonRpcSource source) {
+			Disconnect(reason, source, SocketError.Success);
+		}
+
+		public void Disconnect(string reason, JsonRpcSource source, SocketError socket_error) {
 			if (string.IsNullOrWhiteSpace(reason)) {
 				throw new ArgumentException("Reason for closing connection can not be null or empty.");
 			}
@@ -338,10 +348,10 @@ namespace DtronixJsonRpc {
 			}
 
 			OnDisconnect?.Invoke(this, new ClientDisconnectEventArgs<THandler>(reason, source, Server, this, socket_error));
-			cancellation_token_source.Cancel();
-			client.Close();
-            client_reader.Dispose();
-			base_stream.Dispose();
+			cancellation_token_source?.Cancel();
+			client?.Close();
+            client_reader?.Dispose();
+			base_stream?.Dispose();
 
 			Info.Status = ClientStatus.Disconnected;
 			logger.Info("{0} CID {1}: Stopped", Mode, Info.Id);
