@@ -49,6 +49,15 @@ namespace DtronixJsonRpc {
 
 		public JsonRpcServer<THandler> Server { get; private set; }
 
+		/// <summary>
+		/// The number of miliseconds elapsed to execute a command from the client to the server.
+		/// </summary>
+		public long Ping { get; private set; } = -1;
+
+		private Stopwatch ping_stopwatch;
+
+		private System.Timers.Timer ping_timer;
+
 		private const int AUTH_TIMEOUT = 2000;
 
 		public JsonRpcConnector(string address) {
@@ -57,6 +66,15 @@ namespace DtronixJsonRpc {
 			Address = address;
 			client = new TcpClient();
 			Mode = JsonRpcSource.Client;
+
+			ping_stopwatch = new Stopwatch();
+			ping_timer = new System.Timers.Timer(5000);
+			ping_timer.Elapsed += Ping_timer_Elapsed;
+		}
+
+		private void Ping_timer_Elapsed(object sender, System.Timers.ElapsedEventArgs e) {
+			ping_stopwatch.Restart();
+			Send("$ping", Mode);
 		}
 
 		public JsonRpcConnector(JsonRpcServer<THandler> server, TcpClient client, int id) {
@@ -70,8 +88,6 @@ namespace DtronixJsonRpc {
 
 		protected virtual bool AuthenticateClient() {
 			// Read the initial user info.
-
-
 			try {
 				var user_info_text_task = client_reader.ReadLineAsync();
 				user_info_text_task.Wait(10000, cancellation_token_source.Token);
@@ -210,7 +226,7 @@ namespace DtronixJsonRpc {
                     }
                 } else {
                     if (RequestAuthentication() == false) {
-                        OnAuthorizationFailure.Invoke(this, this);
+                        OnAuthorizationFailure?.Invoke(this, this);
 
                         Disconnect("Authentication failed.", JsonRpcSource.Server);
                         return;
@@ -223,7 +239,11 @@ namespace DtronixJsonRpc {
 
                 OnConnect?.Invoke(this, new ClientConnectEventArgs<THandler>(Server, this));
 
-                WriteLoop();
+				// If this is the client, enable the ping timer.
+				if(Mode == JsonRpcSource.Client) {
+					ping_timer.Enabled = true;
+				}
+				
 
                 while (cancellation_token_source.IsCancellationRequested == false) {
                     Task<string> method_task;
@@ -274,7 +294,7 @@ namespace DtronixJsonRpc {
                         return;
                     }
 
-                    logger.Debug("{0} CID {1}: Method '{2}' called", Mode, Info.Id, method);
+                    logger.Trace("{0} CID {1}: Method '{2}' called", Mode, Info.Id, method);
 
                     var data_task = client_reader.ReadLineAsync();
                     data_task.Wait(cancellation_token_source.Token);
@@ -307,17 +327,34 @@ namespace DtronixJsonRpc {
 
 		private void ExecuteSpecialAction(string method, string data) {
 			ClientInfo[] clients_info;
-            switch (method) {
-				case "$" + nameof(OnConnectedClientChange):
-					clients_info = JsonConvert.DeserializeObject<ClientInfo[]>(data);
-					OnConnectedClientChange?.Invoke(this, new ConnectedClientChangedEventArgs(clients_info));
-					break;
+			if (method == "$" + nameof(OnConnectedClientChange)) {
+				clients_info = JsonConvert.DeserializeObject<ClientInfo[]>(data);
+				OnConnectedClientChange?.Invoke(this, new ConnectedClientChangedEventArgs(clients_info));
 
-				case "$" + nameof(OnDisconnect):
-					clients_info = JsonConvert.DeserializeObject<ClientInfo[]>(data);
-					Disconnect(clients_info[0].DisconnectReason, (Mode == JsonRpcSource.Client) ? JsonRpcSource.Server : JsonRpcSource.Client);
-					break;
-			}
+			} else if (method == "$" + nameof(OnDisconnect)) {
+				clients_info = JsonConvert.DeserializeObject<ClientInfo[]>(data);
+				Disconnect(clients_info[0].DisconnectReason, (Mode == JsonRpcSource.Client) ? JsonRpcSource.Server : JsonRpcSource.Client);
+
+			} else if (method == "$ping") {
+				var source = JsonConvert.DeserializeObject<JsonRpcSource>(data);
+
+				if (source == Mode) {
+					ping_stopwatch.Stop();
+					Ping = ping_stopwatch.ElapsedMilliseconds;
+					Send("$ping-result", Ping);
+
+					logger.Trace("{0} CID {1}: Ping {2}ms", Mode, Info.Id, Ping);
+
+				} else {
+					// Ping back immediately.
+					Send("$ping", source);
+				}
+
+			} else if (method == "$ping-result") {
+				var ping = JsonConvert.DeserializeObject<long>(data);
+				Ping = ping;
+            }
+			
 		}
 
 		public void Disconnect(string reason) {
@@ -352,6 +389,8 @@ namespace DtronixJsonRpc {
 			client?.Close();
             client_reader?.Dispose();
 			base_stream?.Dispose();
+			ping_timer?.Dispose();
+			ping_stopwatch?.Stop();
 
 			Info.Status = ClientStatus.Disconnected;
 			logger.Info("{0} CID {1}: Stopped", Mode, Info.Id);
@@ -405,7 +444,7 @@ namespace DtronixJsonRpc {
                 throw new InvalidOperationException("Can not send request while still connecting.");
             }
 
-            logger.Debug("{0} CID {1}: Sending method '{2}'", Mode, Info.Id, method);
+            logger.Trace("{0} CID {1}: Sending method '{2}'", Mode, Info.Id, method);
             write_queue.Add(Encoding.UTF8.GetBytes(method + "\r\n" + ((json == null) ? "\r\n" : JsonConvert.SerializeObject(json)) + "\r\n"));
         }
 
