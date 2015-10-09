@@ -6,12 +6,12 @@ using System.Threading.Tasks;
 
 namespace DtronixJsonRpc {
 	public enum ClientStatus {
-		Requesting = 0,
-		Ready = 1 << 1,
-		Away = 1 << 2,
-		Connected = 1 << 3,
-		Connecting = 1 << 4,
-		Disconnected = 1 << 5,
-		Disconnecting = 1 << 6
+		Unset = 1 << 0,
+        Connected = 1 << 1,
+		Connecting = 1 << 2,
+		Authorized = 1 << 3,
+		Disconnected = 1 << 4,
+		Disconnecting = 1 << 5,
+		Away = 1 << 6,
 	}
 }

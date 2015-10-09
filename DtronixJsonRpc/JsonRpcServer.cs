@@ -25,11 +25,16 @@ namespace DtronixJsonRpc {
 		private readonly CancellationTokenSource cancellation_token_source;
         private readonly TcpListener listener;
 
+        public bool IsRunning { get; set; }
+
         private ConcurrentDictionary<int, JsonRpcConnector<THandler>> clients = new ConcurrentDictionary<int, JsonRpcConnector<THandler>>();
 
-        public string Address { get; set; }
+		/// <summary>
+		/// Object that is referenced by the action handlers.
+		/// </summary>
+		public object DataObject { get; set; }
 
-        public ConcurrentDictionary<int, JsonRpcConnector<THandler>> Clients {
+		public ConcurrentDictionary<int, JsonRpcConnector<THandler>> Clients {
             get {
                 return clients;
             }
@@ -66,7 +71,8 @@ namespace DtronixJsonRpc {
 			}
 
 			logger.Debug("Server: Listening for connections.");
-			OnStart?.Invoke(this, this);
+            IsRunning = true;
+            OnStart?.Invoke(this, this);
 			while (cancellation_token_source.IsCancellationRequested == false) {
 				var client = listener.AcceptTcpClientAsync();
 				try {
@@ -145,7 +151,9 @@ namespace DtronixJsonRpc {
 
 			listener.Stop();
 
-			OnStop?.Invoke(this, this);
+            IsRunning = false;
+
+            OnStop?.Invoke(this, this);
 
 		}
 
