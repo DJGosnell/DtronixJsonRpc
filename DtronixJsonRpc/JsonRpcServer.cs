@@ -106,7 +106,7 @@ namespace DtronixJsonRpc {
 				};
 
 				if (OnAuthenticationVerification != null) {
-					client_listener.OnAuthorizationVerify += (sender, e) => {
+					client_listener.OnAuthenticationVerify += (sender, e) => {
 						OnAuthenticationVerification?.Invoke(sender, e);
 					};
 				}

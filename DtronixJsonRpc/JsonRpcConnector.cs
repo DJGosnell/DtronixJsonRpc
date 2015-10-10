@@ -40,9 +40,9 @@ namespace DtronixJsonRpc {
 
 		public event EventHandler<JsonRpcConnector<THandler>, ClientDisconnectEventArgs<THandler>> OnDisconnect;
 		public event EventHandler<JsonRpcConnector<THandler>, ClientConnectEventArgs<THandler>> OnConnect;
-		public event EventHandler<JsonRpcConnector<THandler>, ConnectorAuthenticationEventArgs> OnAuthorizationRequest;
-		public event EventHandler<JsonRpcConnector<THandler>> OnAuthorizationFailure;
-		public event EventHandler<JsonRpcConnector<THandler>, ConnectorAuthenticationEventArgs> OnAuthorizationVerify;
+		public event EventHandler<JsonRpcConnector<THandler>, ConnectorAuthenticationEventArgs> OnAuthenticationRequest;
+		public event EventHandler<JsonRpcConnector<THandler>, AuthenticationFailureEventArgs> OnAuthenticationFailure;
+		public event EventHandler<JsonRpcConnector<THandler>, ConnectorAuthenticationEventArgs> OnAuthenticationVerify;
 		public event EventHandler<JsonRpcConnector<THandler>, ConnectedClientChangedEventArgs> OnConnectedClientChange;
 
 		public JsonRpcSource Mode { get; protected set; }
@@ -99,8 +99,8 @@ namespace DtronixJsonRpc {
 				WriteLine(Info.Id.ToString());
 
 				// Read the auth text.
-				var authorization_text_task = client_reader.ReadLineAsync();
-				authorization_text_task.Wait(AUTH_TIMEOUT, cancellation_token_source.Token);
+				var Authentication_text_task = client_reader.ReadLineAsync();
+				Authentication_text_task.Wait(AUTH_TIMEOUT, cancellation_token_source.Token);
 
 				// Parse the user info into an object.
 				var user_info = JsonConvert.DeserializeObject<ClientInfo>(user_info_text_task.Result);
@@ -117,12 +117,12 @@ namespace DtronixJsonRpc {
 
 				// Authorize client.
 				var auth_args = new ConnectorAuthenticationEventArgs() {
-					Data = authorization_text_task.Result
+					Data = Authentication_text_task.Result
 				};
 
 				// Verify the client against the event set.
-				if (OnAuthorizationVerify != null) {
-					OnAuthorizationVerify?.Invoke(this, auth_args);
+				if (OnAuthenticationVerify != null) {
+					OnAuthenticationVerify?.Invoke(this, auth_args);
 
 					if (auth_args.Authenticated) {
 						Info.Status = ClientStatus.Connected;
@@ -133,8 +133,8 @@ namespace DtronixJsonRpc {
 				}
 
 				if (Info.Status != ClientStatus.Connected || failure_reason != null) {
-					Send("$" + nameof(OnAuthorizationFailure), failure_reason);
-                    Disconnect("Authorization Failed. Reason: " + failure_reason);
+					Send("$" + nameof(OnAuthenticationFailure), failure_reason);
+                    Disconnect("Authentication Failed. Reason: " + failure_reason);
 					return false;
 				}
 
@@ -179,7 +179,7 @@ namespace DtronixJsonRpc {
 				// Authorize the client with the specified events.
 				var auth_args = new ConnectorAuthenticationEventArgs();
 
-				OnAuthorizationRequest?.Invoke(this, auth_args);
+				OnAuthenticationRequest?.Invoke(this, auth_args);
 
                 WriteLine(auth_args.Data ?? "");
 
@@ -325,9 +325,9 @@ namespace DtronixJsonRpc {
 				clients_info = JsonConvert.DeserializeObject<ClientInfo[]>(data);
 				Disconnect(clients_info[0].DisconnectReason, (Mode == JsonRpcSource.Client) ? JsonRpcSource.Server : JsonRpcSource.Client);
 
-			} else if (method == "$" + nameof(OnAuthorizationFailure)) {
-				if(Mode == JsonRpcSource.Client) {
-					OnAuthorizationFailure?.Invoke(this, this);
+			} else if (method == "$" + nameof(OnAuthenticationFailure)) {
+				if (Mode == JsonRpcSource.Client) {
+					OnAuthenticationFailure?.Invoke(this, new AuthenticationFailureEventArgs(data));
 				}
 			} else if (method == "$ping") {
 				var source = JsonConvert.DeserializeObject<JsonRpcSource>(data);
@@ -347,6 +347,9 @@ namespace DtronixJsonRpc {
 			} else if (method == "$ping-result") {
 				var ping = JsonConvert.DeserializeObject<long>(data);
 				Ping = ping;
+
+			} else {
+				Disconnect("Tired to call invalid method. Check client version.");
 			}
 			
 		}

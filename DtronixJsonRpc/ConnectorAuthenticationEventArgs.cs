@@ -16,7 +16,7 @@ namespace DtronixJsonRpc {
 			get { return _Data; }
 			set {
 				if (value.Length > 2048) {
-					throw new InvalidOperationException("Authorization request argument is too long to pass to server. Keep the length under 2048 characters");
+					throw new InvalidOperationException("Authentication request argument is too long to pass to server. Keep the length under 2048 characters");
 				}
 				_Data = value;
 			}
