@@ -89,7 +89,7 @@ namespace DtronixJsonRpcTests {
 				Server.Clients[0].Actions.TestClientActions.Test(new TestClientActions<TestActionHandler>.TestClientActionTestArgs());
 			};
 
-			Client.OnAuthorizationRequest += (sender, e) => {
+			Client.OnAuthenticationRequest += (sender, e) => {
 				e.Data = "AUTHENTICATION_DATA";
 			};
 
@@ -103,14 +103,14 @@ namespace DtronixJsonRpcTests {
 
 		[Fact]
 		public void ClientConnectsAndFailsAuthentication() {
-			var auth_failure_reset = AddWait("Authorization fail");
+			var auth_failure_reset = AddWait("Authentication fail");
 			var client_disconnected_reset = AddWait("Client disconnect");
 
-			Client.OnAuthorizationRequest += (sender, e) => {
+			Client.OnAuthenticationRequest += (sender, e) => {
 				e.Data = "FALSE_AUTHENTICATION_DATA";
 			};
 
-			Client.OnAuthorizationFailure += (sender, e) => {
+			Client.OnAuthenticationFailure += (sender, e) => {
 				auth_failure_reset.Set();
             };
 
