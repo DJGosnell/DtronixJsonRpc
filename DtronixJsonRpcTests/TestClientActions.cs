@@ -21,7 +21,7 @@ namespace DtronixJsonRpcTests {
 
 		[ActionMethod(JsonRpcSource.Client)]
 		public void Test(TestClientActionTestArgs args) {
-			if (SendAndReceived(args, nameof(TestClientActions<THandler>))) {
+			if (SendAndReceived(args)) {
 				MethodCalled?.Invoke(this, new TestClientMethodCalledEventArgs(args, GetType()));
 			}
 
@@ -29,7 +29,7 @@ namespace DtronixJsonRpcTests {
 
 		[ActionMethod(JsonRpcSource.Client)]
 		public void Test2(TestClientActionTestArgs args) {
-			if (SendAndReceived(args, nameof(TestClientActions<THandler>))) {
+			if (SendAndReceived(args)) {
 				MethodCalled?.Invoke(this, new TestClientMethodCalledEventArgs(args, GetType()));
 			}
 

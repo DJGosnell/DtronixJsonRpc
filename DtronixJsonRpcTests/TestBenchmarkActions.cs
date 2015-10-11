@@ -29,7 +29,7 @@ namespace DtronixJsonRpcTests {
 
 		[ActionMethod(JsonRpcSource.Unset)]
 		public void TimeBetweenCalls(TimeBetweenCallsArgs args) {
-			if (SendAndReceived(args, nameof(TestBenchmarkActions<THandler>))) {
+			if (SendAndReceived(args)) {
 				Interlocked.Increment(ref call_times);
 				Interlocked.Increment(ref this_call_times);
 

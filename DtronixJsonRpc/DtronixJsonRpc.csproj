@@ -50,7 +50,6 @@
   <ItemGroup>
     <Compile Include="ActionHandler.cs" />
     <Compile Include="AuthenticationFailureEventArgs.cs" />
-    <Compile Include="ClassExtentions.cs" />
     <Compile Include="ClientConnectEventArgs.cs" />
     <Compile Include="ClientStatus.cs" />
     <Compile Include="ConnectedClientChangedEventArgs.cs" />
