@@ -139,6 +139,7 @@ namespace DtronixJsonRpc {
 
 				} else {
 					Send("$OnAuthenticationSuccess");
+					OnConnect?.Invoke(this, new ClientConnectEventArgs<THandler>(Server, this));
 				}
 
 
@@ -331,7 +332,7 @@ namespace DtronixJsonRpc {
 			} else if (method == "$OnAuthenticationSuccess") {
 				// If this is the client, enable the ping timer.
 				if (Mode == JsonRpcSource.Client) {
-					//ping_timer.Enabled = true;
+					ping_timer.Enabled = true;
 				}
 
 				OnConnect?.Invoke(this, new ClientConnectEventArgs<THandler>(Server, this));

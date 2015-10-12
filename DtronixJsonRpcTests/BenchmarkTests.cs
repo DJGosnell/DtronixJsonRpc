@@ -78,7 +78,7 @@ namespace DtronixJsonRpcTests {
         public void ServerCallMethodBenchmark() {
 
             int itterations = 100;
-            int clients = 8;
+            int clients = 4;
             var client_list = new List<JsonRpcConnector<TestActionHandler>>();
 
             Server.OnStart += (sender, e) => {

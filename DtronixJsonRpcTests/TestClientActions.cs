@@ -7,12 +7,13 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace DtronixJsonRpcTests {
-	class TestClientActions<THandler> : JsonRpcActions<THandler> 
-		where THandler : ActionHandler<THandler>, new(){
+	class TestClientActions : JsonRpcActions<TestActionHandler> {
 
-		public event EventHandler<TestClientActions<THandler>, TestClientMethodCalledEventArgs> MethodCalled;
+		public event EventHandler<TestClientActions, TestClientMethodCalledEventArgs> MethodCalled;
 
-		public TestClientActions(JsonRpcConnector<THandler> connector) : base(connector) {  }
+		public JsonRpcConnector<TestActionHandler> Connector { get { return this.connector; } }
+
+		public TestClientActions(JsonRpcConnector<TestActionHandler> connector) : base(connector) {  }
 
 
 		public class TestClientActionTestArgs : JsonRpcActionArgs {

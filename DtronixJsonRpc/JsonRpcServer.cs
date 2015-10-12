@@ -83,7 +83,7 @@ namespace DtronixJsonRpc {
                     break;
 
 				} catch (Exception e) {
-					logger.Error(e, "Server: Unknown exception occured while listening for clients..", null);
+					logger.Error(e, "Server: Unknown exception occurred while listening for clients. Exception: {0}", e.ToString());
                     break;
                 }
 
@@ -93,6 +93,10 @@ namespace DtronixJsonRpc {
 					logger.Info("Server: Client ({0}) disconnected. Reason: {1}. Removing from list of active clients.", sender.Info.Id, e.Reason);
 					JsonRpcConnector<THandler> removed_client;
 					clients.TryRemove(sender.Info.Id, out removed_client);
+
+					if(removed_client == null) {
+						return;
+					}
 
 					Broadcast(cl => cl.Send("$" + nameof(JsonRpcConnector<THandler>.OnConnectedClientChange), new ClientInfo[] { removed_client.Info }));
 

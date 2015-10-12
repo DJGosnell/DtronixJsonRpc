@@ -46,7 +46,7 @@ namespace DtronixJsonRpcTests {
 				if (this_call_times == args.MaxCalls) {
 					long time = overall_stop_watch.ElapsedMilliseconds;
 					logger.Trace("Total calls {0} completed in {1} ms. Estimated {2:0} calls per second", this_call_times, time, this_call_times / (time / 1000d));
-					Connector.Disconnect("Test completed", JsonRpcSource.Client);
+					connector.Disconnect("Test completed", JsonRpcSource.Client);
 				}
 			}
 

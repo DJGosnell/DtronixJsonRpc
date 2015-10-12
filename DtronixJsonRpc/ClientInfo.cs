@@ -6,7 +6,16 @@ using System.Threading.Tasks;
 
 namespace DtronixJsonRpc{
     public class ClientInfo : JsonRpcActionArgs {
-        public int Id { get; set; } = -1;
+
+		private int _Id;
+
+		public int Id {
+			get { return _Id; }
+			set {
+				SetField(ref _Id, value);
+			}
+		}
+
 
 		private string _Username;
 
@@ -20,11 +29,19 @@ namespace DtronixJsonRpc{
 					throw new InvalidOperationException("Username must be under 64 characters.");
 				}
 
-				_Username = value;
+				SetField(ref _Username, value);
 			}
 		}
 
-        public ClientStatus Status { get; set; } = ClientStatus.Disconnected;
+		private ClientStatus _Status;
+
+		public ClientStatus Status {
+			get { return _Status; }
+			set {
+				SetField(ref _Status, value);
+			}
+		}
+
 
 		private string _DisconnectReason;
 
@@ -37,8 +54,8 @@ namespace DtronixJsonRpc{
 				if (value?.Length > 1024) {
 					throw new InvalidOperationException("Reason for disconnection must be under 1024 characters.");
 				}
-				_DisconnectReason = value;
 
+				SetField(ref _DisconnectReason, value);
 			}
 		}
 	}

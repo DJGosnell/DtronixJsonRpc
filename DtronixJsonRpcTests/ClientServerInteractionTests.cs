@@ -76,7 +76,7 @@ namespace DtronixJsonRpcTests {
 			var called_method_reset = AddWait("Method call");
 
 			Client.Actions.TestClientActions.MethodCalled += (sender, e) => {
-				if (e.Type == typeof(TestClientActions<TestActionHandler>)) {
+				if (e.Type == typeof(TestClientActions)) {
 					if (e.Method == "Test") {
 						called_method_reset.Set();
 						Server.Stop("Test completed");
@@ -86,7 +86,7 @@ namespace DtronixJsonRpcTests {
 			};
 
 			Client.OnConnect += (sender, e) => {
-				Server.Clients[0].Actions.TestClientActions.Test(new TestClientActions<TestActionHandler>.TestClientActionTestArgs());
+				Server.Clients[0].Actions.TestClientActions.Test(new TestClientActions.TestClientActionTestArgs());
 			};
 
 			Client.OnAuthenticationRequest += (sender, e) => {
@@ -148,15 +148,15 @@ namespace DtronixJsonRpcTests {
 			var random_long = 1684584139;
 
 			Client.OnConnect += (sender, e) => {
-				Server.Clients[0].Actions.TestClientActions.Test(new TestClientActions<TestActionHandler>.TestClientActionTestArgs() {
+				Server.Clients[0].Actions.TestClientActions.Test(new TestClientActions.TestClientActionTestArgs() {
 					RandomLong = random_long
 				});
 			};
 
 			Client.Actions.TestClientActions.MethodCalled += (sender, e) => {
-				if(e.Type == typeof(TestClientActions<TestActionHandler>)) {
+				if(e.Type == typeof(TestClientActions)) {
 					if (e.Method == "Test") {
-						Assert.Equal(random_long, ((TestClientActions<TestActionHandler>.TestClientActionTestArgs)e.Arguments).RandomLong);
+						Assert.Equal(random_long, ((TestClientActions.TestClientActionTestArgs)e.Arguments).RandomLong);
 						called_method_reset.Set();
 						Client.Disconnect("Test completed", JsonRpcSource.Client);
 					}
@@ -197,9 +197,9 @@ namespace DtronixJsonRpcTests {
                         client.Info.Username = "DefaultTestClient" + (int)state;
 
                         client.Actions.TestClientActions.MethodCalled += (sender2, e2) => {
-                            if (e2.Type == typeof(TestClientActions<TestActionHandler>)) {
+                            if (e2.Type == typeof(TestClientActions)) {
                                 if (e2.Method == "Test") {
-                                    Assert.Equal(random_long + sender2.Connector.Info.Id, ((TestClientActions<TestActionHandler>.TestClientActionTestArgs)e2.Arguments).RandomLong);
+                                    Assert.Equal(random_long + sender2.Connector.Info.Id, ((TestClientActions.TestClientActionTestArgs)e2.Arguments).RandomLong);
                                     wait_list[(int)state].Set();
                                     client.Disconnect("Client test completed", JsonRpcSource.Client);
                                 }
@@ -213,7 +213,7 @@ namespace DtronixJsonRpcTests {
             };
 
             Server.OnClientConnect += (sender2, e2) => {
-                e2.Client.Actions.TestClientActions.Test(new TestClientActions<TestActionHandler>.TestClientActionTestArgs() {
+                e2.Client.Actions.TestClientActions.Test(new TestClientActions.TestClientActionTestArgs() {
                     RandomLong = random_long + e2.Client.Info.Id
                 });
             };
