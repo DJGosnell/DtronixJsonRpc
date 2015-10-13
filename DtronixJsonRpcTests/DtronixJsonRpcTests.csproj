@@ -69,10 +69,12 @@
     <Otherwise />
   </Choose>
   <ItemGroup>
+    <Compile Include="BaseTest.cs" />
     <Compile Include="BenchmarkTests.cs" />
+    <Compile Include="ServerTests.cs" />
     <Compile Include="TestBenchmarkActions.cs" />
     <Compile Include="TestClientActions.cs" />
-    <Compile Include="ClientServerInteractionTests.cs" />
+    <Compile Include="ClientTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TestActionHandler.cs" />
     <Compile Include="TestClientMethodCalledEventArgs.cs" />

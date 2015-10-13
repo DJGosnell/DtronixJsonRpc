@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
 
 namespace DtronixJsonRpcTests {
-	class TestClientMethodCalledEventArgs : EventArgs {
+	public class TestClientMethodCalledEventArgs : EventArgs {
 		public Type Type { get; set; }
 
 		public string Method { get; set; }

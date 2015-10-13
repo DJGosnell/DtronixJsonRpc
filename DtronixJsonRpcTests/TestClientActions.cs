@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace DtronixJsonRpcTests {
-	class TestClientActions : JsonRpcActions<TestActionHandler> {
+	public class TestClientActions : JsonRpcActions<TestActionHandler> {
 
 		public event EventHandler<TestClientActions, TestClientMethodCalledEventArgs> MethodCalled;
 

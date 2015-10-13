@@ -9,7 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace DtronixJsonRpcTests {
-	class TestBenchmarkActions<THandler> : JsonRpcActions<THandler>
+	public class TestBenchmarkActions<THandler> : JsonRpcActions<THandler>
 		where THandler : ActionHandler<THandler>, new() {
 
 		public event Action Completed;

@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace DtronixJsonRpcTests {
-	class TestActionHandler : ActionHandler<TestActionHandler> {
+	public class TestActionHandler : ActionHandler<TestActionHandler> {
 
 		private TestClientActions _TestClientActions = null;
 		public TestClientActions TestClientActions {
