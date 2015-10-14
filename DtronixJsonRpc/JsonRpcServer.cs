@@ -58,6 +58,9 @@ namespace DtronixJsonRpc {
 		public JsonRpcServer(IPAddress address, int port) {
             cancellation_token_source = new CancellationTokenSource();
             listener = new TcpListener(address, port);
+
+			// TODO: Rewrite constructors to use a configuration class.
+			// TODO: Add configuration option to enable broadcasting of users change in information.
         }
 
 
