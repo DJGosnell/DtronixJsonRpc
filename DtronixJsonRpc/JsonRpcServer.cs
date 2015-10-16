@@ -141,7 +141,17 @@ namespace DtronixJsonRpc {
             }
         }
 
-        public void Stop(string reason) {
+		public void Broadcast<T>(Action<JsonRpcConnector<THandler>, T> action, T args) where T : JsonRpcActionArgs {
+			foreach (var client in clients) {
+				if (client.Value.Info.Status == ClientStatus.Connected) {
+					logger.Debug("Server: Broadcasting method to client {0}.", client.Value.Info.Id);
+					args.Source = JsonRpcSource.Unset;
+					action(client.Value, args);
+				}
+			}
+		}
+
+		public void Stop(string reason) {
 			if (_IsStopping) {
 				logger.Debug("Server: Stop requested after server is already in the process of stopping. Reason: {0}", reason);
 			}
