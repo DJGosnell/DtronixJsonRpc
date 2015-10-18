@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,7 +21,7 @@ namespace DtronixJsonRpcTests {
 		public static int call_times = 0;
 		public int this_call_times = 0;
 
-		public TestBenchmarkActions(JsonRpcConnector<THandler> connector) : base(connector) { }
+		public TestBenchmarkActions(JsonRpcConnector<THandler> connector, [CallerMemberName] string member_name = "") : base(connector, member_name) { }
 
 		public class TimeBetweenCallsArgs : JsonRpcActionArgs {
 			public bool CloseClient { get; set; }
@@ -46,7 +47,7 @@ namespace DtronixJsonRpcTests {
 				if (this_call_times == args.MaxCalls) {
 					long time = overall_stop_watch.ElapsedMilliseconds;
 					logger.Trace("Total calls {0} completed in {1} ms. Estimated {2:0} calls per second", this_call_times, time, this_call_times / (time / 1000d));
-					connector.Disconnect("Test completed", JsonRpcSource.Client);
+					Connector.Disconnect("Test completed", JsonRpcSource.Client);
 				}
 			}
 

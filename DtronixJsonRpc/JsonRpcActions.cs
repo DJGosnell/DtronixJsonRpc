@@ -10,12 +10,11 @@ namespace DtronixJsonRpc {
 		where THandler : ActionHandler<THandler>, new() {
 
 		private string reference_name;
-        protected readonly JsonRpcConnector<THandler> connector;
 
-        //public JsonRpcConnector<THandler> Connector { get; }
+		protected JsonRpcConnector<THandler> Connector { get; }
 
 		public JsonRpcActions(JsonRpcConnector<THandler> connector, [CallerMemberName] string member_name = "") {
-			this.connector = connector;
+			this.Connector = connector;
 			reference_name = member_name;
         }
 
@@ -25,8 +24,8 @@ namespace DtronixJsonRpc {
 
 		protected bool SendAndReceived(JsonRpcActionArgs args, string class_name, [CallerMemberName] string member_name = "") {
 			if (args.Source == JsonRpcSource.Unset) {
-				args.Source = connector.Mode;
-                connector.Send(class_name + "." + member_name, args);
+				args.Source = Connector.Mode;
+                Connector.Send(class_name + "." + member_name, args);
 				return false;
 
 			} else {

@@ -12,9 +12,11 @@ namespace DtronixJsonRpcTests {
 
 		public event EventHandler<TestClientActions, TestClientMethodCalledEventArgs> MethodCalled;
 
-		public JsonRpcConnector<TestActionHandler> Connector { get { return this.connector; } }
+		new public JsonRpcConnector<TestActionHandler> Connector { get { return base.Connector; } }
 
-		public TestClientActions(JsonRpcConnector<TestActionHandler> connector, [CallerMemberName] string member_name = "") : base(connector, member_name) {  }
+		public TestClientActions(JsonRpcConnector<TestActionHandler> connector, [CallerMemberName] string member_name = "") : base(connector, member_name) {
+
+		}
 
 
 		public class TestClientActionTestArgs : JsonRpcActionArgs {

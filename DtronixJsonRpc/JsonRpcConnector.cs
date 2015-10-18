@@ -11,6 +11,7 @@ using System.Diagnostics;
 using DtronixJsonRpc;
 using NLog;
 using System.Collections.Concurrent;
+using System.Net;
 
 namespace DtronixJsonRpc {
 	public class JsonRpcConnector<THandler> : IDisposable
@@ -69,22 +70,23 @@ namespace DtronixJsonRpc {
 
 			ping_stopwatch = new Stopwatch();
 			ping_timer = new System.Timers.Timer(5000);
-			ping_timer.Elapsed += Ping_timer_Elapsed;
-		}
 
-		private void Ping_timer_Elapsed(object sender, System.Timers.ElapsedEventArgs e) {
-			ping_stopwatch.Restart();
-			Send("$ping", Mode);
+			ping_timer.Elapsed += (sender, e) => {
+				ping_stopwatch.Restart();
+				Send("$ping", Mode);
+			};
 		}
 
 		public JsonRpcConnector(JsonRpcServer<THandler> server, TcpClient client, int id) {
 			Actions = new THandler();
 			Actions.Connector = this;
+			Address = ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
 			this.client = client;
 			Info.Id = id;
 			Server = server;
 			Mode = JsonRpcSource.Server;
 		}
+
 
 		protected virtual bool AuthenticateClient() {
 			// Read the initial user info.
