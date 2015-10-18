@@ -23,6 +23,11 @@ namespace DtronixJsonRpc {
 		}
 
 		/// <summary>
+		/// String describing the reason the authentication failed.  Ignored except server.
+		/// </summary>
+		public string FailureReason { get; set; }
+
+		/// <summary>
 		/// Set to true if the user has passed valid connection credentials.
 		/// </summary>
 		public bool Authenticated { get; set; } = false;

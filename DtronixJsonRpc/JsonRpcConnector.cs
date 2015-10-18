@@ -113,7 +113,7 @@ namespace DtronixJsonRpc {
 
 				Info.Username = user_info.Username.Trim();
 				// Checks to ensure the client should connect.
-				if (Server.Clients.Values.FirstOrDefault(cli => cli.Info.Id != Info.Id && cli.Info.Username == Info.Username) != null) {
+				if (Server.Clients.Values.Any(cli => cli.Info.Id != Info.Id && cli.Info.Username == Info.Username)) {
 					failure_reason = "Duplicate username on server.";
 				}
 
@@ -128,7 +128,10 @@ namespace DtronixJsonRpc {
 
 					if (auth_args.Authenticated) {
 						Info.Status = ClientStatus.Connected;
+					} else {
+						failure_reason = auth_args.FailureReason;
 					}
+
 
 				} else {
 					Info.Status = ClientStatus.Connected;

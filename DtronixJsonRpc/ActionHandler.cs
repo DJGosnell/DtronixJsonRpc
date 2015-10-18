@@ -77,7 +77,7 @@ namespace DtronixJsonRpc {
 
 				
                if (called_method_info.attribute_info == null) {
-					throw new InvalidOperationException("Method requested by the server is not allowed to be called.");
+					throw new InvalidOperationException("Method called is not allowed to be called.");
 				}
 
 				called_method_cache.TryAdd(method, called_method_info);
