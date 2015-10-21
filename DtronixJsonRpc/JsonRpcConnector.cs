@@ -51,7 +51,7 @@ namespace DtronixJsonRpc {
 		public JsonRpcServer<THandler> Server { get; private set; }
 
 		/// <summary>
-		/// The number of miliseconds elapsed to execute a command from the client to the server.
+		/// The number of milliseconds elapsed to execute a command from the client to the server.
 		/// </summary>
 		public long Ping { get; private set; } = -1;
 
@@ -61,12 +61,13 @@ namespace DtronixJsonRpc {
 
 		private const int AUTH_TIMEOUT = 2000;
 
-		public JsonRpcConnector(string address) {
+		public JsonRpcConnector(string address, int port = 2828) {
 			Actions = new THandler();
 			Actions.Connector = this;
 			Address = address;
 			client = new TcpClient();
 			Mode = JsonRpcSource.Client;
+			Port = port;
 
 			ping_stopwatch = new Stopwatch();
 			ping_timer = new System.Timers.Timer(5000);

@@ -9,30 +9,9 @@ using NLog;
 using System.Diagnostics;
 
 namespace DtronixJsonRpcTests {
-	public class BenchmarkTests : IDisposable {
+	public class BenchmarkTests : BaseTest {
 
-        private static Logger logger = LogManager.GetCurrentClassLogger();
-
-        private const int RESET_TIMEOUT = 5000;
-
-		private readonly ITestOutputHelper output;
-
-		private JsonRpcServer<TestActionHandler> Server { get; }
-		private JsonRpcConnector<TestActionHandler> Client { get; }
-
-		private List<Tuple<string, WaitHandle>> waits = new List<Tuple<string, WaitHandle>>();
-
-		public BenchmarkTests(ITestOutputHelper output) {
-			var server_stop_reset = AddWait("Server stop");
-
-			this.output = output;
-			Server = new JsonRpcServer<TestActionHandler>();
-			Client = new JsonRpcConnector<TestActionHandler>("localhost");
-			Client.Info.Username = "DefaultTestClient";
-
-			Server.OnStop += (sender, e) => {
-				server_stop_reset.Set();
-			};
+		public BenchmarkTests(ITestOutputHelper output) : base(output) {
 		}
 
 		[Fact]
@@ -84,7 +63,7 @@ namespace DtronixJsonRpcTests {
             Server.OnStart += (sender, e) => {
 				for (int i = 0; i < clients; i++) {
 					Task.Factory.StartNew((object number) => {
-						var client = new JsonRpcConnector<TestActionHandler>("localhost");
+						var client = new JsonRpcConnector<TestActionHandler>("localhost", port);
 						client_list.Add(client);
 						client.Info.Username = "DefaultTestClient" + number;
 
