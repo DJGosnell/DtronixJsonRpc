@@ -12,6 +12,7 @@ using DtronixJsonRpc;
 using NLog;
 using System.Collections.Concurrent;
 using System.Net;
+using Newtonsoft.Json.Bson;
 
 namespace DtronixJsonRpc {
 	public class JsonRpcConnector<THandler> : IDisposable
@@ -28,11 +29,14 @@ namespace DtronixJsonRpc {
 
 		private TcpClient client;
 		private NetworkStream base_stream;
-		private StreamReader client_reader;
+		//private StreamReader client_reader;
+		private BsonReader reader;
+		private BsonWriter writer;
+		private JsonSerializer serializer;
 
-        private BlockingCollection<byte[]> write_queue = new BlockingCollection<byte[]>();
+		private BlockingCollection<byte[]> write_queue = new BlockingCollection<byte[]>();
 
-        public THandler Actions { get; }
+		public THandler Actions { get; }
 
 		/// <summary>
 		/// Object that is referenced by the action handlers.
@@ -76,6 +80,8 @@ namespace DtronixJsonRpc {
 				ping_stopwatch.Restart();
 				Send("$ping", Mode);
 			};
+
+			serializer = new JsonSerializer();
 		}
 
 		public JsonRpcConnector(JsonRpcServer<THandler> server, TcpClient client, int id) {
@@ -86,27 +92,24 @@ namespace DtronixJsonRpc {
 			Info.Id = id;
 			Server = server;
 			Mode = JsonRpcSource.Server;
+			serializer = new JsonSerializer();
 		}
 
 
-		protected virtual bool AuthenticateClient() {
+		protected async virtual Task<bool> AuthenticateClient() {
 			// Read the initial user info.
 			try {
 				string failure_reason = null;
 
 				// Read the user info object.
-				string user_info_text;
-				TryReadLine(out user_info_text, AUTH_TIMEOUT);
+				var user_info = await Read<ClientInfo>(AUTH_TIMEOUT);
 
 				// Send the ID to the client
-				WriteLine(Info.Id.ToString());
+				Write(Info.Id.ToString());
 
 				// Read the auth text.
-				string authentication_text;
-				TryReadLine(out authentication_text, AUTH_TIMEOUT);
+				string authentication_text = await Read<string>(AUTH_TIMEOUT);
 
-				// Parse the user info into an object.
-				var user_info = JsonConvert.DeserializeObject<ClientInfo>(user_info_text);
 
 				if (user_info == null) {
 					failure_reason = "User information passed was invalid.";
@@ -140,7 +143,7 @@ namespace DtronixJsonRpc {
 
 				if (Info.Status != ClientStatus.Connected || failure_reason != null) {
 					Send("$" + nameof(OnAuthenticationFailure), failure_reason, true);
-                    Disconnect("Authentication Failed. Reason: " + failure_reason);
+					Disconnect("Authentication Failed. Reason: " + failure_reason);
 					return false;
 
 				} else {
@@ -169,64 +172,57 @@ namespace DtronixJsonRpc {
 			return true;
 		}
 
-		protected virtual void RequestAuthentication() {
+		protected async virtual void RequestAuthentication() {
 			try {
-                WriteLine(JsonConvert.SerializeObject(Info));
+				Write(JsonConvert.SerializeObject(Info));
 
 				// Read the ID from the server
-				string id;
-				TryReadLine(out id, AUTH_TIMEOUT);
-
-                int int_id;
-
-				if (int.TryParse(id, out int_id) == false) {
-					Disconnect("Server did not send a valid user id.", JsonRpcSource.Server);
-					return;
-				}
-
-				Info.Id = int_id;
+				Info.Id = await Read<int>(AUTH_TIMEOUT);
 
 				// Authorize the client with the specified events.
 				var auth_args = new ConnectorAuthenticationEventArgs();
 
 				OnAuthenticationRequest?.Invoke(this, auth_args);
 
-                WriteLine(auth_args.Data ?? "");
+				Write(auth_args.Data ?? "");
 
 			} catch (OperationCanceledException) {
 				Disconnect("Server did not provide connection information in a timely manor.", Mode);
 			}
 		}
 
-        public void Connect() {
+		public async void Connect() {
 
 
-            try {
-                // Start the writer.
-                WriteLoop();
+			try {
+				// Start the writer.
+				WriteLoop();
 
-                logger.Info("{0} CID {1}: New client started", Mode, Info.Id);
-                Info.Status = ClientStatus.Connecting;
+				logger.Info("{0} CID {1}: New client started", Mode, Info.Id);
+				Info.Status = ClientStatus.Connecting;
 
-                if (Mode == JsonRpcSource.Client) {
-                    logger.Info("{0} CID {1}: Attempting to connect to server", Mode, Info.Id);
-                    var completed = client.ConnectAsync(Address, Port).Wait(3000, cancellation_token_source.Token);
+				if (Mode == JsonRpcSource.Client) {
+					logger.Info("{0} CID {1}: Attempting to connect to server", Mode, Info.Id);
+					var completed = client.ConnectAsync(Address, Port).Wait(3000, cancellation_token_source.Token);
 
-                    if (completed == false && client.Connected == false) {
-                        logger.Warn("{0} CID {1}: Attempted connection did not complete successfully.", Mode, Info.Id);
-                        Disconnect("Could not connect client in a reasonable amount of time.", JsonRpcSource.Client, SocketError.TimedOut);
-                        return;
-                    }
+					if (completed == false && client.Connected == false) {
+						logger.Warn("{0} CID {1}: Attempted connection did not complete successfully.", Mode, Info.Id);
+						Disconnect("Could not connect client in a reasonable amount of time.", JsonRpcSource.Client, SocketError.TimedOut);
+						return;
+					}
 
-                }
+				}
 
-                base_stream = client.GetStream();
-                //client_writer = new StreamWriter(base_stream, Encoding.UTF8, 1024 * 16, true);
-                client_reader = new StreamReader(base_stream, Encoding.UTF8, true, 1024 * 16, true);
+				base_stream = client.GetStream();
 
-                logger.Debug("{0} CID {1}: Connected. Authenticating...", Mode, Info.Id);
-                if (Mode == JsonRpcSource.Server) {
-					if (AuthenticateClient() == false) {
+				writer = new BsonWriter(Stream.Synchronized(base_stream));
+				//client_writer = new StreamWriter(base_stream, Encoding.UTF8, 1024 * 16, true);
+				reader = new BsonReader(base_stream);
+				reader.SupportMultipleContent = true;
+
+				logger.Debug("{0} CID {1}: Connected. Authenticating...", Mode, Info.Id);
+				if (Mode == JsonRpcSource.Server) {
+					if (await AuthenticateClient() == false) {
 						logger.Debug("{0} CID {1}: Authentication failure.", Mode, Info.Id);
 						return;
 					}
@@ -234,105 +230,96 @@ namespace DtronixJsonRpc {
 					logger.Debug("{0} CID {1}: Authorized", Mode, Info.Id);
 				} else {
 					RequestAuthentication();
-                }
+				}
 
-                Info.Status = ClientStatus.Connected;
+				Info.Status = ClientStatus.Connected;
 
-                while (cancellation_token_source.IsCancellationRequested == false) {
-                    string method;
+				while (cancellation_token_source.IsCancellationRequested == false) {
+					string method;
 					string data;
 
-                    try {
-                        // See if we have reached the end of the stream.
-                        if (TryReadLine(out method) == false) {
-                            Disconnect("Connection closed", Mode);
-                            return;
-                        }
-                    } catch (OperationCanceledException e) {
-                        logger.Debug(e, "{0} CID {1}: Method reader was canceled", Mode, Info.Id);
-                        return;
-                    } catch (IOException e) {
-                        logger.Error(e, "{0} CID {1}: IO Exception occurred while listening. Exception: {2}", Mode, Info.Id, e.InnerException.ToString());
-                        Disconnect("Connection closed", Mode);
-                        return;
+					try {
+						// See if we have reached the end of the stream.
+						method = await Read<string>();
+						if (method == null) {
+							Disconnect("Connection closed", Mode);
+							return;
+						}
+					} catch (OperationCanceledException e) {
+						logger.Debug(e, "{0} CID {1}: Method reader was canceled", Mode, Info.Id);
+						return;
+					} catch (IOException e) {
+						logger.Error(e, "{0} CID {1}: IO Exception occurred while listening. Exception: {2}", Mode, Info.Id, e.InnerException.ToString());
+						Disconnect("Connection closed", Mode);
+						return;
 
-                    } catch (AggregateException e) {
-                        Exception base_exception = e.GetBaseException();
+					} catch (AggregateException e) {
+						Exception base_exception = e.GetBaseException();
 
-                        if (base_exception is IOException) {
-                            if (client.Client.Connected) {
-                                logger.Error(e, "{0} CID {1}: IO Exception occurred while listening. Exception: {2}", Mode, Info.Id, base_exception.ToString());
-                            } else {
-                                logger.Warn(e, "{0} CID {1}: Connection closed by the other party. Exception: {2}", Mode, Info.Id, base_exception.ToString());
-                            }
-                        }else if (base_exception is ObjectDisposedException) {
-                            logger.Warn(e, "{0} CID {1}: Connection closed by the other party. Exception: {2}", Mode, Info.Id, base_exception.ToString());
-                        } else {
-                            logger.Error(e, "{0} CID {1}: Unknown exception occurred while listening. Exception: {2}", Mode, Info.Id, base_exception.ToString());
-                        }
+						if (base_exception is IOException) {
+							if (client.Client.Connected) {
+								logger.Error(e, "{0} CID {1}: IO Exception occurred while listening. Exception: {2}", Mode, Info.Id, base_exception.ToString());
+							} else {
+								logger.Warn(e, "{0} CID {1}: Connection closed by the other party. Exception: {2}", Mode, Info.Id, base_exception.ToString());
+							}
+						} else if (base_exception is ObjectDisposedException) {
+							logger.Warn(e, "{0} CID {1}: Connection closed by the other party. Exception: {2}", Mode, Info.Id, base_exception.ToString());
+						} else {
+							logger.Error(e, "{0} CID {1}: Unknown exception occurred while listening. Exception: {2}", Mode, Info.Id, base_exception.ToString());
+						}
 
-                        Disconnect("Connection closed", Mode);
-                        return;
-                    } catch (Exception e) {
-                        logger.Error(e, "{0} CID {1}: Unknown exception occurred while listening. Exception: {2}", Mode, Info.Id, e.ToString());
-                        Disconnect("Connection closed", Mode);
-                        return;
-                    }
-
-                    if (method == null) {
-                        Disconnect("Send invalid method", Mode);
-                        return;
-                    }
-
-                    logger.Debug("{0} CID {1}: Method '{2}' called", Mode, Info.Id, method);
-
-					
-
-					if (TryReadLine(out data) == false) {
+						Disconnect("Connection closed", Mode);
+						return;
+					} catch (Exception e) {
+						logger.Error(e, "{0} CID {1}: Unknown exception occurred while listening. Exception: {2}", Mode, Info.Id, e.ToString());
 						Disconnect("Connection closed", Mode);
 						return;
 					}
 
+					if (method == null) {
+						Disconnect("Send invalid method", Mode);
+						return;
+					}
+
+					logger.Debug("{0} CID {1}: Method '{2}' called", Mode, Info.Id, method);
+
 					try {
-                        if (method[0] == '$') {
-                            ExecuteSpecialAction(method, data);
-                        } else {
-                            Actions.ExecuteAction(method, data);
-                        }
-                    } catch (Exception e) {
-                        logger.Error(e, "{0} CID {1}: Called action threw exception. Exception: {2}", Mode, Info.Id, e.ToString());
-                    }
-                }
-            } catch (SocketException e) {
-                Disconnect("Server connection issues", JsonRpcSource.Client, e.SocketErrorCode);
+						Actions.ExecuteAction(method);
+					} catch (Exception e) {
+						logger.Error(e, "{0} CID {1}: Called action threw exception. Exception: {2}", Mode, Info.Id, e.ToString());
+					}
+				}
+			} catch (SocketException e) {
+				Disconnect("Server connection issues", JsonRpcSource.Client, e.SocketErrorCode);
 
-            } catch (Exception e) {
-                logger.Error(e, "{0} CID {1}: Exception Occurred: {2}", Mode, Info.Id, e.ToString());
+			} catch (Exception e) {
+				logger.Error(e, "{0} CID {1}: Exception Occurred: {2}", Mode, Info.Id, e.ToString());
 
-            } finally {
-                if (Info.Status != ClientStatus.Disconnected || Info.Status == ClientStatus.Disconnecting) {
-                    Disconnect("Client closed", Mode);
-                }
-            }
-        }
-			
-		
+			} finally {
+				if (Info.Status != ClientStatus.Disconnected || Info.Status == ClientStatus.Disconnecting) {
+					Disconnect("Client closed", Mode);
+				}
+			}
+		}
 
 
-		private void ExecuteSpecialAction(string method, string data) {
+		internal async void ExecuteSpecialAction(string method) {
 			ClientInfo[] clients_info;
+
 			if (method == "$" + nameof(OnConnectedClientChange)) {
-				clients_info = JsonConvert.DeserializeObject<ClientInfo[]>(data);
+
+				clients_info = await Read<ClientInfo[]>();
 				OnConnectedClientChange?.Invoke(this, new ConnectedClientChangedEventArgs(clients_info));
 
 			} else if (method == "$" + nameof(OnDisconnect)) {
-				clients_info = JsonConvert.DeserializeObject<ClientInfo[]>(data);
+				clients_info = await Read<ClientInfo[]>();
 				Disconnect(clients_info[0].DisconnectReason, (Mode == JsonRpcSource.Client) ? JsonRpcSource.Server : JsonRpcSource.Client);
 
 			} else if (method == "$" + nameof(OnAuthenticationFailure)) {
 				if (Mode == JsonRpcSource.Client) {
 					logger.Debug("{0} CID {1}: Authorized", Mode, Info.Id);
-					OnAuthenticationFailure?.Invoke(this, new AuthenticationFailureEventArgs(data));
+					var reason = await Read<string>();
+					OnAuthenticationFailure?.Invoke(this, new AuthenticationFailureEventArgs(reason));
 				}
 
 			} else if (method == "$OnAuthenticationSuccess") {
@@ -344,7 +331,7 @@ namespace DtronixJsonRpc {
 				OnConnect?.Invoke(this, new ClientConnectEventArgs<THandler>(Server, this));
 
 			} else if (method == "$ping") {
-				var source = JsonConvert.DeserializeObject<JsonRpcSource>(data);
+				var source = await Read<JsonRpcSource>();
 
 				if (source == Mode) {
 					ping_stopwatch.Stop();
@@ -359,13 +346,13 @@ namespace DtronixJsonRpc {
 				}
 
 			} else if (method == "$ping-result") {
-				var ping = JsonConvert.DeserializeObject<long>(data);
+				var ping = await Read<long>();
 				Ping = ping;
 
 			} else {
 				Disconnect("Tired to call invalid method. Check client version.");
 			}
-			
+
 		}
 
 		public void Disconnect(string reason) {
@@ -391,14 +378,13 @@ namespace DtronixJsonRpc {
 			Info.DisconnectReason = reason;
 
 			// If we are disconnecting, let the other party know.
-			if (Mode  == source && client.Client.Connected) {
+			if (Mode == source && client.Client.Connected) {
 				Send("$" + nameof(OnDisconnect), new ClientInfo[] { Info });
 			}
 
 			OnDisconnect?.Invoke(this, new ClientDisconnectEventArgs<THandler>(reason, source, Server, this, socket_error));
 			cancellation_token_source?.Cancel();
 			client?.Close();
-            client_reader?.Dispose();
 			base_stream?.Dispose();
 			ping_timer?.Dispose();
 			ping_stopwatch?.Stop();
@@ -407,48 +393,60 @@ namespace DtronixJsonRpc {
 			logger.Info("{0} CID {1}: Stopped", Mode, Info.Id);
 		}
 
-        private void WriteLoop() {
-            Task.Factory.StartNew(() => {
-                try {
-                    foreach (byte[] buffer in write_queue.GetConsumingEnumerable(cancellation_token_source.Token)) {
-                        if (client.Client.Connected) {
-                            base_stream.Write(buffer, 0, buffer.Length);
-                        }
-                    }
-                } catch (IOException e) {
-                    if (client.Client.Connected) {
-                        logger.Error(e, "{0} CID {1}: Exception occurred when trying to write to the stream. Exception: {2}", Mode, Info.Id, e.ToString());
-                    }
-                    Disconnect("Writing error to stream.", Mode);
+		private void WriteLoop() {
+			Task.Factory.StartNew(() => {
+				try {
+					foreach (byte[] buffer in write_queue.GetConsumingEnumerable(cancellation_token_source.Token)) {
+						if (client.Client.Connected) {
+							base_stream.Write(buffer, 0, buffer.Length);
+						}
+					}
+				} catch (IOException e) {
+					if (client.Client.Connected) {
+						logger.Error(e, "{0} CID {1}: Exception occurred when trying to write to the stream. Exception: {2}", Mode, Info.Id, e.ToString());
+					}
+					Disconnect("Writing error to stream.", Mode);
 
-                } catch (ObjectDisposedException e) {
-                    logger.Warn("{0} CID {1}: Tried to write to the stream when the client was closed.", Mode, Info.Id);
-                    // The client was closed.  
-                    return;
+				} catch (ObjectDisposedException e) {
+					logger.Warn("{0} CID {1}: Tried to write to the stream when the client was closed.", Mode, Info.Id);
+					// The client was closed.  
+					return;
 
-                } catch (OperationCanceledException) {
-                    return;
-                } catch (Exception e) {
-                    logger.Error(e, "{0} CID {1}: Unknown error occurred while writing to the stream. Exception: {2}", Mode, Info.Id, e.ToString());
-                    throw;
-                }
+				} catch (OperationCanceledException) {
+					return;
+				} catch (Exception e) {
+					logger.Error(e, "{0} CID {1}: Unknown error occurred while writing to the stream. Exception: {2}", Mode, Info.Id, e.ToString());
+					throw;
+				}
 
-            }, TaskCreationOptions.LongRunning);
-        }
+			}, TaskCreationOptions.LongRunning);
+		}
 
-        private void WriteLine(string data) {
+		public void Write<T>(T data) {
 			logger.Trace("{0} CID {1}: Write line to stream: {2}", Mode, Info.Id, data);
-			write_queue.Add(Encoding.UTF8.GetBytes(data + "\r\n"));
-        }
+			serializer.Serialize(writer, data);
+		}
 
-		private bool TryReadLine(out string line, int timeout = -1) {
-			var read_line_task = client_reader.ReadLineAsync();
-			bool success = read_line_task.Wait(timeout, cancellation_token_source.Token);
-			line = read_line_task.Result;
+		internal async Task<T> Read<T>(int timeout = -1) {
+			return (T)(await Read(typeof(T), timeout));
+		}
 
-			logger.Trace("{0} CID {1}: Read line from stream: {2}", Mode, Info.Id, line);
-            return success;
-        }
+		internal async Task<object> Read(Type type, int timeout = -1) {
+			var cancel = new CancellationTokenSource(timeout);
+
+			var task = await Task.Run(() => {
+				reader.Read();
+				return serializer.Deserialize(reader, type);
+			}, cancel.Token);
+
+
+			logger.Trace("{0} CID {1}: Read object from stream: {2}", Mode, Info.Id, task.ToString());
+
+			return task;
+		}
+
+
+
 
 		private void Send(string method, object json, bool force_send) {
 			if (cancellation_token_source.IsCancellationRequested) {
@@ -456,23 +454,22 @@ namespace DtronixJsonRpc {
 			}
 
 			if (client.Client.Connected == false) {
-				//logger.Error("{0} CID {1}: Tried sending while the connection is closed.", Mode, Info.Id, method);
 				return;
 			}
 
 			if (Info.Status == ClientStatus.Connecting && force_send == false) {
 				throw new InvalidOperationException("Can not send request while still connecting.");
 			}
-			string json_text = JsonConvert.SerializeObject(json);
 
-			logger.Trace("{0} CID {1}: Sending method '{2}' with data ", Mode, Info.Id, method, json_text);
-			
-			write_queue.Add(Encoding.UTF8.GetBytes(method + "\r\n" + ((json == null) ? "\r\n" : json_text + "\r\n")));
+			logger.Trace("{0} CID {1}: Sending method '{2}' with data ", Mode, Info.Id, method, json.ToString());
+
+			Write(method);
+			Write(json);
 		}
 
 		public void Send(string method, object json = null) {
 			Send(method, json, false);
-        }
+		}
 
 		public void Dispose() {
 			Disconnect("Class object disposed.", Mode);

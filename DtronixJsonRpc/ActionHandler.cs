@@ -37,9 +37,12 @@ namespace DtronixJsonRpc {
 
 		
 
-		public void ExecuteAction(string method, string data) {
+		public async void ExecuteAction() {
 			CalledMethodInfo called_method_info;
 			object instance_class;
+
+			
+
 			var call_parts = method.Split('.');
 
 			// Get the class.
@@ -92,7 +95,7 @@ namespace DtronixJsonRpc {
 			}
 			object json_object;
 			try {
-				json_object = JsonConvert.DeserializeObject(data, parameter_type);
+				json_object = await Connector.Read(parameter_type);
             } catch (Exception) {
 				throw new InvalidOperationException("Passed parameter for called method could not be read.");
 			}
