@@ -9,15 +9,8 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace DtronixJsonRpc {
-    public class JsonRpcActionArgs<T> : INotifyPropertyChanged {
-		[JsonProperty("jsonrpc")]
-		public string JsonRPC { get; set; }
-
-		[JsonProperty("method")]
-		public string Method { get; set; }
-
-
-		public T Args { get; set; }
+	public class JsonRpcActionArgs : INotifyPropertyChanged {
+		public JsonRpcSource Source { get; set; } = JsonRpcSource.Unset;
 
 		public event PropertyChangedEventHandler PropertyChanged;
 

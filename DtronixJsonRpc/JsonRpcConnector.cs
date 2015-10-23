@@ -215,7 +215,7 @@ namespace DtronixJsonRpc {
 
 				base_stream = client.GetStream();
 
-				writer = new BsonWriter(Stream.Synchronized(base_stream));
+				writer = new BsonWriter(base_stream);
 				//client_writer = new StreamWriter(base_stream, Encoding.UTF8, 1024 * 16, true);
 				reader = new BsonReader(base_stream);
 				reader.SupportMultipleContent = true;
@@ -414,17 +414,13 @@ namespace DtronixJsonRpc {
 
 				} catch (OperationCanceledException) {
 					return;
+
 				} catch (Exception e) {
 					logger.Error(e, "{0} CID {1}: Unknown error occurred while writing to the stream. Exception: {2}", Mode, Info.Id, e.ToString());
 					throw;
 				}
 
 			}, TaskCreationOptions.LongRunning);
-		}
-
-		public void Write<T>(T data) {
-			logger.Trace("{0} CID {1}: Write line to stream: {2}", Mode, Info.Id, data);
-			serializer.Serialize(writer, data);
 		}
 
 		internal async Task<T> Read<T>(int timeout = -1) {
@@ -463,8 +459,14 @@ namespace DtronixJsonRpc {
 
 			logger.Trace("{0} CID {1}: Sending method '{2}' with data ", Mode, Info.Id, method, json.ToString());
 
-			Write(method);
-			Write(json);
+			// Write the method name
+			var method_bytes = Encoding.UTF8.GetBytes(method)
+            write_queue.Add()
+            base_stream.WriteAsync(method_bytes, 0, method_bytes.Length, cancellation_token_source.Token);
+			
+
+			logger.Trace("{0} CID {1}: Write line to stream: {2}", Mode, Info.Id, data);
+			serializer.Serialize(writer, json);
 		}
 
 		public void Send(string method, object json = null) {
