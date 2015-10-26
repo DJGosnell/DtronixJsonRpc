@@ -18,14 +18,15 @@ namespace DtronixJsonRpc {
 			reference_name = member_name;
         }
 
-        protected bool SendAndReceived(JsonRpcActionArgs args, [CallerMemberName] string member_name = "") {
-			return SendAndReceived(args, reference_name, member_name);
-		}
+		protected bool SendAndReceived<T>(JsonRpcParam<T> args, [CallerMemberName] string member_name = "") {
+			if(args == null) {
+				args = new JsonRpcParam<T>();
+            }
 
-		protected bool SendAndReceived(JsonRpcActionArgs args, string class_name, [CallerMemberName] string member_name = "") {
-			if (args.Source == JsonRpcSource.Unset) {
-				args.Source = Connector.Mode;
-                Connector.Send(class_name + "." + member_name, args);
+			if (args.Method == null) {
+				args.Method = reference_name + "." + member_name;
+                Connector.Send(args);
+
 				return false;
 
 			} else {

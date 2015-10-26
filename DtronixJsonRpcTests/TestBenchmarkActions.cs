@@ -10,8 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace DtronixJsonRpcTests {
-	public class TestBenchmarkActions<THandler> : JsonRpcActions<THandler>
-		where THandler : ActionHandler<THandler>, new() {
+	public class TestBenchmarkActions : JsonRpcActions<TestActionHandler> {
 
 		public event Action Completed;
 
@@ -21,16 +20,18 @@ namespace DtronixJsonRpcTests {
 		public static int call_times = 0;
 		public int this_call_times = 0;
 
-		public TestBenchmarkActions(JsonRpcConnector<THandler> connector, [CallerMemberName] string member_name = "") : base(connector, member_name) { }
+		public TestBenchmarkActions(JsonRpcConnector<TestActionHandler> connector, [CallerMemberName] string member_name = "") : base(connector, member_name) {
 
-		public class TimeBetweenCallsArgs : JsonRpcActionArgs {
+		}
+
+		public class TimeBetweenCallsArgs {
 			public bool CloseClient { get; set; }
 			public int MaxCalls { get; set; }
 		}
 
 		[ActionMethod(JsonRpcSource.Unset)]
-		public void TimeBetweenCalls(TimeBetweenCallsArgs args) {
-			if (SendAndReceived(args)) {
+		public void TimeBetweenCalls(JsonRpcParam<TimeBetweenCallsArgs> param) {
+			if (SendAndReceived(param)) {
 				Interlocked.Increment(ref call_times);
 				Interlocked.Increment(ref this_call_times);
 
@@ -44,7 +45,7 @@ namespace DtronixJsonRpcTests {
 					stop_watch.Restart();
 				}
 
-				if (this_call_times == args.MaxCalls) {
+				if (this_call_times == param.Args.MaxCalls) {
 					long time = overall_stop_watch.ElapsedMilliseconds;
 					logger.Trace("Total calls {0} completed in {1} ms. Estimated {2:0} calls per second", this_call_times, time, this_call_times / (time / 1000d));
 					Connector.Disconnect("Test completed", JsonRpcSource.Client);

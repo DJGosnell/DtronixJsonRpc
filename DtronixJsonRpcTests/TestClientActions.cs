@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 namespace DtronixJsonRpcTests {
 	public class TestClientActions : JsonRpcActions<TestActionHandler> {
 
-		public event EventHandler<TestClientActions, TestClientMethodCalledEventArgs> MethodCalled;
+		public event EventHandler<TestClientActions, TestClientMethodCalledEventArgs<object>> MethodCalled;
 
 		new public JsonRpcConnector<TestActionHandler> Connector { get { return base.Connector; } }
 
@@ -19,22 +19,22 @@ namespace DtronixJsonRpcTests {
 		}
 
 
-		public class TestClientActionTestArgs : JsonRpcActionArgs {
+		public class TestArgs {
 			public long RandomLong { get; set; }
 		}
 
 		[ActionMethod(JsonRpcSource.Client)]
-		public void Test(TestClientActionTestArgs args) {
-			if (SendAndReceived(args)) {
-				MethodCalled?.Invoke(this, new TestClientMethodCalledEventArgs(args, GetType()));
+		public void Test(JsonRpcParam<TestArgs> param) {
+			if (SendAndReceived(param)) {
+				MethodCalled?.Invoke(this, new TestClientMethodCalledEventArgs<object>(param, GetType()));
 			}
 
 		}
 
 		[ActionMethod(JsonRpcSource.Client)]
-		public void Test2(TestClientActionTestArgs args) {
-			if (SendAndReceived(args)) {
-				MethodCalled?.Invoke(this, new TestClientMethodCalledEventArgs(args, GetType()));
+		public void Test2(JsonRpcParam<TestArgs> param) {
+			if (SendAndReceived(param)) {
+				MethodCalled?.Invoke(this, new TestClientMethodCalledEventArgs<object>(param, GetType()));
 			}
 
 		}

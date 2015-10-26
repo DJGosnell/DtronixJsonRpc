@@ -21,7 +21,9 @@ namespace DtronixJsonRpcTests {
             Server.OnClientConnect += (sender, e) => {
                 sw = Stopwatch.StartNew();
                 for (int i = 0; i < itterations; i++) {
-                    e.Client.Actions.TestBenchmarkActions.TimeBetweenCalls((new TestBenchmarkActions<TestActionHandler>.TimeBetweenCallsArgs() { MaxCalls = itterations }));
+					e.Client.Actions.TestBenchmarkActions.TimeBetweenCalls(new JsonRpcParam<TestBenchmarkActions.TimeBetweenCallsArgs>(new TestBenchmarkActions.TimeBetweenCallsArgs() {
+						MaxCalls = itterations
+					}));
                 }
             };
 
@@ -40,7 +42,7 @@ namespace DtronixJsonRpcTests {
 
             Server.OnClientConnect += (sender, e) => {
                 Parallel.For(0, itterations, (i) => {
-                    e.Client.Actions.TestBenchmarkActions.TimeBetweenCalls((new TestBenchmarkActions<TestActionHandler>.TimeBetweenCallsArgs() { MaxCalls = itterations }));
+					e.Client.Actions.TestBenchmarkActions.TimeBetweenCalls(new JsonRpcParam<TestBenchmarkActions.TimeBetweenCallsArgs>(new TestBenchmarkActions.TimeBetweenCallsArgs() { MaxCalls = itterations }));
                 });
             };
 
@@ -69,7 +71,8 @@ namespace DtronixJsonRpcTests {
 
 						client.OnConnect += (sender2, e2) => {
 							for (int j = 0; j < itterations; j++) {
-								sender2.Actions.TestBenchmarkActions.TimeBetweenCalls((new TestBenchmarkActions<TestActionHandler>.TimeBetweenCallsArgs() { MaxCalls = itterations }));
+
+								sender2.Actions.TestBenchmarkActions.TimeBetweenCalls(new JsonRpcParam<TestBenchmarkActions.TimeBetweenCallsArgs>(new TestBenchmarkActions.TimeBetweenCallsArgs() { MaxCalls = itterations }));
 							}
 						};
 
@@ -79,7 +82,7 @@ namespace DtronixJsonRpcTests {
             };
 
             Server.OnClientDisconnect += (sender, e) => {
-                if(TestBenchmarkActions<TestActionHandler>.call_times == (itterations * clients)){
+                if(TestBenchmarkActions.call_times == (itterations * clients)){
                     sender.Stop("Test completed");
                 }
             };
@@ -96,36 +99,5 @@ namespace DtronixJsonRpcTests {
 
         }
 
-
-
-
-        /// <summary>
-        /// Helper to start the server and start the client once the server has loaded.
-        /// </summary>
-        private void StartServerConnectClient() {
-			Server.OnStart += (sender, e) => {
-				Task.Run(() => Client.Connect());
-				
-			};
-
-
-			Server.Start();
-		}
-
-
-		private ManualResetEvent AddWait(string description) {
-			var wait = new ManualResetEvent(false);
-			waits.Add(new Tuple<string, WaitHandle>(description, wait));
-			return wait;
-		}
-
-		public void Dispose() {
-
-            foreach (var wait in waits) {
-				Assert.True(wait.Item2.WaitOne(RESET_TIMEOUT), "Did not activate reset event: " + wait.Item1);
-			}
-
-            
-        }
 	}
 }

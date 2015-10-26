@@ -9,18 +9,35 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace DtronixJsonRpc {
-    public class JsonRpcActionArgs<T> : INotifyPropertyChanged {
+    public class JsonRpcParam<T> {
 		[JsonProperty("jsonrpc")]
-		public string JsonRPC { get; set; }
+		internal string JsonRPC { get; } = "2.0";
 
 		[JsonProperty("method")]
-		public string Method { get; set; }
+		internal string Method { get; set; }
 
-
+		[JsonProperty("args")]
 		public T Args { get; set; }
 
 		public event PropertyChangedEventHandler PropertyChanged;
 
+		public JsonRpcParam() {
+
+		}
+
+		public JsonRpcParam(T args) {
+			Args = args;
+		}
+
+		internal JsonRpcParam(string method) {
+			Method = method;
+		}
+
+		internal JsonRpcParam(string method, T args) {
+			Method = method;
+			Args = args;
+		}
+		/*
 		protected void RequireStringLength(string str, int min, int max, bool allow_null, [System.Runtime.CompilerServices.CallerMemberName] string member_name = "") {
 			if (str.Length < min) {
 				throw new InvalidOperationException($"{member_name} must be more than {min} characters.");
@@ -38,6 +55,6 @@ namespace DtronixJsonRpc {
 			field = value;
 			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property_name));
 			return true;
-		}
+		}*/
 	}
 }

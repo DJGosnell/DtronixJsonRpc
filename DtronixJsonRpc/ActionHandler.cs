@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using NLog;
 using System;
 using System.Collections.Concurrent;
@@ -37,11 +38,9 @@ namespace DtronixJsonRpc {
 
 		
 
-		public async void ExecuteAction() {
+		public void ExecuteAction(string method, JToken data) {
 			CalledMethodInfo called_method_info;
 			object instance_class;
-
-			
 
 			var call_parts = method.Split('.');
 
@@ -93,19 +92,13 @@ namespace DtronixJsonRpc {
 			if(parameter_type == null) {
 				throw new InvalidOperationException("Called method does not have a parameter which to pass the data to.");
 			}
-			object json_object;
-			try {
-				json_object = await Connector.Read(parameter_type);
-            } catch (Exception) {
-				throw new InvalidOperationException("Passed parameter for called method could not be read.");
-			}
 
 			if (called_method_info.attribute_info.Source != JsonRpcSource.Unset && called_method_info.attribute_info.Source != Connector.Mode) {
 				throw new InvalidOperationException("Method called is not allowed to be called in a " + Connector.Mode.ToString());
 			}
 
 			try {
-				called_method_info.method_info.Invoke(instance_class, new object[] { json_object });
+				called_method_info.method_info.Invoke(instance_class, new object[] { data.ToObject(parameter_type) });
 
 			} catch (Exception e) {
 				throw e;

@@ -101,7 +101,7 @@ namespace DtronixJsonRpc {
 						return;
 					}
 
-					Broadcast(cl => cl.Send("$" + nameof(JsonRpcConnector<THandler>.OnConnectedClientChange), new ClientInfo[] { removed_client.Info }));
+					Broadcast(cl => cl.Send(new JsonRpcParam<ClientInfo[]>("$" + nameof(JsonRpcConnector<THandler>.OnConnectedClientChange), new ClientInfo[] { removed_client.Info })));
 
 					OnClientDisconnect?.Invoke(this, e);
 				};
@@ -125,7 +125,7 @@ namespace DtronixJsonRpc {
             }
 
 			if (cancellation_token_source.IsCancellationRequested) {
-				Broadcast(cl => cl.Send("$" + nameof(JsonRpcConnector<THandler>.OnDisconnect), "Server shutting down."));
+				Broadcast(cl => cl.Send(new JsonRpcParam<string>("$" + nameof(JsonRpcConnector<THandler>.OnDisconnect), "Server shutting down.")));
 			}
 
 			logger.Info("Server: Stopped");
@@ -141,11 +141,10 @@ namespace DtronixJsonRpc {
             }
         }
 
-		public void Broadcast<T>(Action<JsonRpcConnector<THandler>, T> action, T args) where T : JsonRpcActionArgs {
+		public void Broadcast<T>(Action<JsonRpcConnector<THandler>, T> action, T args) where T : JsonRpcParam<T> {
 			foreach (var client in clients) {
 				if (client.Value.Info.Status == ClientStatus.Connected) {
 					logger.Debug("Server: Broadcasting method to client {0}.", client.Value.Info.Id);
-					args.Source = JsonRpcSource.Unset;
 					action(client.Value, args);
 				}
 			}

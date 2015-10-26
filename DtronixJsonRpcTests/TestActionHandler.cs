@@ -15,10 +15,10 @@ namespace DtronixJsonRpcTests {
 			}
 		}
 
-        private TestBenchmarkActions<TestActionHandler> _TestBenchmarkActions = null;
-        public TestBenchmarkActions<TestActionHandler> TestBenchmarkActions {
+        private TestBenchmarkActions _TestBenchmarkActions = null;
+        public TestBenchmarkActions TestBenchmarkActions {
             get {
-                return _TestBenchmarkActions ?? (_TestBenchmarkActions = new TestBenchmarkActions<TestActionHandler>(Connector));
+                return _TestBenchmarkActions ?? (_TestBenchmarkActions = new TestBenchmarkActions(Connector));
             }
         }
 
