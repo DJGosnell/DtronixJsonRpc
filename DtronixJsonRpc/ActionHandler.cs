@@ -98,7 +98,7 @@ namespace DtronixJsonRpc {
 			}
 
 			try {
-				called_method_info.method_info.Invoke(instance_class, new object[] { data["args"].ToObject(parameter_type), false });
+				called_method_info.method_info.Invoke(instance_class, new object[] { data["args"].ToObject(parameter_type), true });
 
 			} catch (Exception e) {
 				throw e;
