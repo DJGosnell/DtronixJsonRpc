@@ -30,8 +30,8 @@ namespace DtronixJsonRpcTests {
 		}
 
 		[ActionMethod(JsonRpcSource.Unset)]
-		public void TimeBetweenCalls(JsonRpcParam<TimeBetweenCallsArgs> param) {
-			if (SendAndReceived(param)) {
+		public void TimeBetweenCalls(TimeBetweenCallsArgs args, bool received = false) {
+			if (SendAndReceived(args, received)) {
 				Interlocked.Increment(ref call_times);
 				Interlocked.Increment(ref this_call_times);
 
@@ -45,7 +45,7 @@ namespace DtronixJsonRpcTests {
 					stop_watch.Restart();
 				}
 
-				if (this_call_times == param.Args.MaxCalls) {
+				if (this_call_times == args.MaxCalls) {
 					long time = overall_stop_watch.ElapsedMilliseconds;
 					logger.Trace("Total calls {0} completed in {1} ms. Estimated {2:0} calls per second", this_call_times, time, this_call_times / (time / 1000d));
 					Connector.Disconnect("Test completed", JsonRpcSource.Client);

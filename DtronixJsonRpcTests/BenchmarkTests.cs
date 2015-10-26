@@ -21,9 +21,9 @@ namespace DtronixJsonRpcTests {
             Server.OnClientConnect += (sender, e) => {
                 sw = Stopwatch.StartNew();
                 for (int i = 0; i < itterations; i++) {
-					e.Client.Actions.TestBenchmarkActions.TimeBetweenCalls(new JsonRpcParam<TestBenchmarkActions.TimeBetweenCallsArgs>(new TestBenchmarkActions.TimeBetweenCallsArgs() {
+					e.Client.Actions.TestBenchmarkActions.TimeBetweenCalls(new TestBenchmarkActions.TimeBetweenCallsArgs() {
 						MaxCalls = itterations
-					}));
+					});
                 }
             };
 
@@ -42,7 +42,7 @@ namespace DtronixJsonRpcTests {
 
             Server.OnClientConnect += (sender, e) => {
                 Parallel.For(0, itterations, (i) => {
-					e.Client.Actions.TestBenchmarkActions.TimeBetweenCalls(new JsonRpcParam<TestBenchmarkActions.TimeBetweenCallsArgs>(new TestBenchmarkActions.TimeBetweenCallsArgs() { MaxCalls = itterations }));
+					e.Client.Actions.TestBenchmarkActions.TimeBetweenCalls(new TestBenchmarkActions.TimeBetweenCallsArgs() { MaxCalls = itterations });
                 });
             };
 
@@ -72,7 +72,7 @@ namespace DtronixJsonRpcTests {
 						client.OnConnect += (sender2, e2) => {
 							for (int j = 0; j < itterations; j++) {
 
-								sender2.Actions.TestBenchmarkActions.TimeBetweenCalls(new JsonRpcParam<TestBenchmarkActions.TimeBetweenCallsArgs>(new TestBenchmarkActions.TimeBetweenCallsArgs() { MaxCalls = itterations }));
+								sender2.Actions.TestBenchmarkActions.TimeBetweenCalls(new TestBenchmarkActions.TimeBetweenCallsArgs() { MaxCalls = itterations });
 							}
 						};
 

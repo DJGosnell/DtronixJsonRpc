@@ -131,7 +131,7 @@ namespace DtronixJsonRpcTests {
                         client.Actions.TestClientActions.MethodCalled += (sender2, e2) => {
                             if (e2.Type == typeof(TestClientActions)) {
                                 if (e2.Method == "Test") {
-                                    Assert.Equal(random_long + sender2.Connector.Info.Id, ((JsonRpcParam<TestClientActions.TestArgs>)(e2.Arguments)).Args.RandomLong);
+                                    Assert.Equal(random_long + sender2.Connector.Info.Id, ((TestClientActions.TestArgs)(e2.Arguments)).RandomLong);
                                     wait_list[(int)state].Set();
                                     client.Disconnect("Client test completed", JsonRpcSource.Client);
                                 }
@@ -145,9 +145,9 @@ namespace DtronixJsonRpcTests {
             };
 
             Server.OnClientConnect += (sender2, e2) => {
-				e2.Client.Actions.TestClientActions.Test(new JsonRpcParam<TestClientActions.TestArgs>(new TestClientActions.TestArgs() {
+				e2.Client.Actions.TestClientActions.Test(new TestClientActions.TestArgs() { 
 					RandomLong = random_long + e2.Client.Info.Id
-				}));
+				});
             };
 
             Task.Run(() => Server.Start());

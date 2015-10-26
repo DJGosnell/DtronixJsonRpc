@@ -18,21 +18,13 @@ namespace DtronixJsonRpc {
 			reference_name = member_name;
         }
 
-		protected bool SendAndReceived<T>(JsonRpcParam<T> args, [CallerMemberName] string member_name = "") {
-			if(args == null) {
-				args = new JsonRpcParam<T>();
-            }
-
-			if (args.Method == null) {
-				args.Method = reference_name + "." + member_name;
-                Connector.Send(args);
-
-				return false;
-
-			} else {
+		protected bool SendAndReceived<T>(T args, bool received, [CallerMemberName] string member_name = "") {
+			if (received) {
 				return true;
-			}
-
+			} else { 
+				Connector.Send(new JsonRpcParam<T>(reference_name + "." + member_name, args));
+				return false;
+            }
 		}
 
 	}

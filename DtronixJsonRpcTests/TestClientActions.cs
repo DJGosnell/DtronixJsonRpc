@@ -24,17 +24,17 @@ namespace DtronixJsonRpcTests {
 		}
 
 		[ActionMethod(JsonRpcSource.Client)]
-		public void Test(JsonRpcParam<TestArgs> param) {
-			if (SendAndReceived(param)) {
-				MethodCalled?.Invoke(this, new TestClientMethodCalledEventArgs<object>(param, GetType()));
+		public void Test(TestArgs args, bool received = false) {
+			if (SendAndReceived(args, received)) {
+				MethodCalled?.Invoke(this, new TestClientMethodCalledEventArgs<object>(args, GetType()));
 			}
 
 		}
 
 		[ActionMethod(JsonRpcSource.Client)]
-		public void Test2(JsonRpcParam<TestArgs> param) {
-			if (SendAndReceived(param)) {
-				MethodCalled?.Invoke(this, new TestClientMethodCalledEventArgs<object>(param, GetType()));
+		public void Test2(TestArgs args, bool received = false) {
+			if (SendAndReceived(args, received)) {
+				MethodCalled?.Invoke(this, new TestClientMethodCalledEventArgs<object>(args, GetType()));
 			}
 
 		}
