@@ -384,6 +384,7 @@ namespace DtronixJsonRpc {
 
 				} catch (OperationCanceledException) {
 					return;
+
 				} catch (Exception e) {
 					logger.Error(e, "{0} CID {1}: Unknown error occurred while writing to the stream. Exception: {2}", Mode, Info.Id, e.ToString());
 					throw;
