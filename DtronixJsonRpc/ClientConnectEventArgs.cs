@@ -10,9 +10,9 @@ namespace DtronixJsonRpc {
 		where THandler : ActionHandler<THandler>, new() {
 
 		public JsonRpcServer<THandler> Server { get; set; }
-		public JsonRpcConnector<THandler> Client { get; set; }
+		public JsonRpcClient<THandler> Client { get; set; }
 
-		public ClientConnectEventArgs(JsonRpcServer<THandler> server, JsonRpcConnector<THandler> client) {
+		public ClientConnectEventArgs(JsonRpcServer<THandler> server, JsonRpcClient<THandler> client) {
 			Server = server;
 			Client = client;
 

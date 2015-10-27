@@ -14,9 +14,9 @@ namespace DtronixJsonRpc {
 		public JsonRpcSource DisconnectSource { get; set; }
 
 		public JsonRpcServer<THandler> Server { get; set; }
-		public JsonRpcConnector<THandler> Client { get; set; }
+		public JsonRpcClient<THandler> Client { get; set; }
 
-		public ClientDisconnectEventArgs(string reason, JsonRpcSource disconnect_source, JsonRpcServer<THandler> server, JsonRpcConnector<THandler> client, SocketError socket_error = SocketError.Success) {
+		public ClientDisconnectEventArgs(string reason, JsonRpcSource disconnect_source, JsonRpcServer<THandler> server, JsonRpcClient<THandler> client, SocketError socket_error = SocketError.Success) {
 			Server = server;
 			Client = client;
 			DisconnectSource = disconnect_source;

@@ -20,7 +20,7 @@ namespace DtronixJsonRpcTests {
 		public static int call_times = 0;
 		public int this_call_times = 0;
 
-		public TestBenchmarkActions(JsonRpcConnector<TestActionHandler> connector, [CallerMemberName] string member_name = "") : base(connector, member_name) {
+		public TestBenchmarkActions(JsonRpcClient<TestActionHandler> connector, [CallerMemberName] string member_name = "") : base(connector, member_name) {
 
 		}
 

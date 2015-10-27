@@ -11,9 +11,9 @@ namespace DtronixJsonRpc {
 
 		private string reference_name;
 
-		protected JsonRpcConnector<THandler> Connector { get; }
+		protected JsonRpcClient<THandler> Connector { get; }
 
-		public JsonRpcActions(JsonRpcConnector<THandler> connector, [CallerMemberName] string member_name = "") {
+		public JsonRpcActions(JsonRpcClient<THandler> connector, [CallerMemberName] string member_name = "") {
 			this.Connector = connector;
 			reference_name = member_name;
         }

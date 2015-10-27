@@ -111,9 +111,9 @@ namespace DtronixJsonRpcTests {
         public void SimultaneousConnections() {
 
 
-            List<JsonRpcConnector<TestActionHandler>> clients = new List<JsonRpcConnector<TestActionHandler>>();
+            List<JsonRpcClient<TestActionHandler>> clients = new List<JsonRpcClient<TestActionHandler>>();
             var random_long = 1684584139;
-            var client_list = new List<JsonRpcConnector<TestActionHandler>>();
+            var client_list = new List<JsonRpcClient<TestActionHandler>>();
             var wait_list = new List<ManualResetEvent>();
             int client_count = 20;
             for (int i = 0; i < client_count; i++) {
@@ -124,7 +124,7 @@ namespace DtronixJsonRpcTests {
 
                 for (int i = 0; i < client_count; i++) {
                     Task.Factory.StartNew((object state) => {
-                        var client = new JsonRpcConnector<TestActionHandler>("localhost", port);
+                        var client = new JsonRpcClient<TestActionHandler>("localhost", port);
                         client_list.Add(client);
                         client.Info.Username = "DefaultTestClient" + (int)state;
 

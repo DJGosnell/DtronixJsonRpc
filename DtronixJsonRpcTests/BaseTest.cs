@@ -20,7 +20,7 @@ namespace DtronixJsonRpcTests {
         protected readonly ITestOutputHelper output;
 
         protected JsonRpcServer<TestActionHandler> Server { get; }
-        protected JsonRpcConnector<TestActionHandler> Client { get; }
+        protected JsonRpcClient<TestActionHandler> Client { get; }
 
 		protected int port;
 
@@ -35,7 +35,7 @@ namespace DtronixJsonRpcTests {
 
             this.output = output;
             Server = new JsonRpcServer<TestActionHandler>(port);
-            Client = new JsonRpcConnector<TestActionHandler>("localhost", port);
+            Client = new JsonRpcClient<TestActionHandler>("localhost", port);
             Client.Info.Username = "DefaultTestClient";
 
 			Server.OnStop += (sender, e) => {

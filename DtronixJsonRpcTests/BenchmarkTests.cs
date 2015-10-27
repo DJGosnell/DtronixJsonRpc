@@ -60,12 +60,12 @@ namespace DtronixJsonRpcTests {
 
             int itterations = 100;
             int clients = 4;
-            var client_list = new List<JsonRpcConnector<TestActionHandler>>();
+            var client_list = new List<JsonRpcClient<TestActionHandler>>();
 
             Server.OnStart += (sender, e) => {
 				for (int i = 0; i < clients; i++) {
 					Task.Factory.StartNew((object number) => {
-						var client = new JsonRpcConnector<TestActionHandler>("localhost", port);
+						var client = new JsonRpcClient<TestActionHandler>("localhost", port);
 						client_list.Add(client);
 						client.Info.Username = "DefaultTestClient" + number;
 

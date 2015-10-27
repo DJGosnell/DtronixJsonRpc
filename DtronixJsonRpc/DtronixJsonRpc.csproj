@@ -59,9 +59,10 @@
     <Compile Include="JsonRpcActions.cs" />
     <Compile Include="ClientInfo.cs" />
     <Compile Include="ActionMethodCallEventArgs.cs" />
+    <Compile Include="JsonRpcServerConfigurations.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="JsonRpcSource.cs" />
-    <Compile Include="JsonRpcConnector.cs" />
+    <Compile Include="JsonRpcClient.cs" />
     <Compile Include="JsonRpcServer.cs" />
     <Compile Include="ClientDisconnectEventArgs.cs" />
     <Compile Include="Utilities.cs" />

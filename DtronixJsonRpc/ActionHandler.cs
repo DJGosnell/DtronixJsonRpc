@@ -21,7 +21,7 @@ namespace DtronixJsonRpc {
 			public ActionMethodAttribute attribute_info;
 		}
 
-		public JsonRpcConnector<THandler> Connector { get; set; }
+		public JsonRpcClient<THandler> Connector { get; set; }
 
 		/*private Dictionary<string, JsonRpcActions<IActionHandler>> loaded_actions = new Dictionary<string, JsonRpcActions<IActionHandler>>();
 
