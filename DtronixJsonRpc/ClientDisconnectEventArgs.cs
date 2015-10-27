@@ -6,11 +6,11 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace DtronixJsonRpc {
-    public class ClientDisconnectEventArgs<THandler> : EventArgs 
+	public class ClientDisconnectEventArgs<THandler> : EventArgs 
 		where THandler : ActionHandler<THandler>, new() {
 
-        public string Reason { get; set; }
-        public SocketError Error { get; set; } = SocketError.Success;
+		public string Reason { get; set; }
+		public SocketError Error { get; set; } = SocketError.Success;
 		public JsonRpcSource DisconnectSource { get; set; }
 
 		public JsonRpcServer<THandler> Server { get; set; }
@@ -20,9 +20,9 @@ namespace DtronixJsonRpc {
 			Server = server;
 			Client = client;
 			DisconnectSource = disconnect_source;
-            Reason = reason;
-            Error = socket_error;
+			Reason = reason;
+			Error = socket_error;
 
-        }
-    }
+		}
+	}
 }

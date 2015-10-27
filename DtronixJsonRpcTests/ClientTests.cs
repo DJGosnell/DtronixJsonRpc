@@ -75,7 +75,7 @@ namespace DtronixJsonRpcTests {
 
 			Client.OnAuthenticationFailure += (sender, e) => {
 				auth_failure_reset.Set();
-            };
+			};
 
 			Client.OnDisconnect += (sender, e) => {
 				client_disconnected_reset.Set();
@@ -90,78 +90,78 @@ namespace DtronixJsonRpcTests {
 		}
 
 
-        [Fact]
-        public void ClientConnects() {
-            var called_method_reset = AddWait("Client connect");
+		[Fact]
+		public void ClientConnects() {
+			var called_method_reset = AddWait("Client connect");
 
 
-            Client.OnConnect += (sender, e) => {
-                called_method_reset.Set();
-                Server.Stop("Test completed");
-            };
+			Client.OnConnect += (sender, e) => {
+				called_method_reset.Set();
+				Server.Stop("Test completed");
+			};
 
-            StartServerConnectClient();
-        }
-
-
+			StartServerConnectClient();
+		}
 
 
 
-        [Fact]
-        public void SimultaneousConnections() {
 
 
-            List<JsonRpcClient<TestActionHandler>> clients = new List<JsonRpcClient<TestActionHandler>>();
-            var random_long = 1684584139;
-            var client_list = new List<JsonRpcClient<TestActionHandler>>();
-            var wait_list = new List<ManualResetEvent>();
-            int client_count = 20;
-            for (int i = 0; i < client_count; i++) {
-                wait_list.Add(AddWait("Method call"));
-            }
+		[Fact]
+		public void SimultaneousConnections() {
 
-            Server.OnStart += (sender, e) => {
 
-                for (int i = 0; i < client_count; i++) {
-                    Task.Factory.StartNew((object state) => {
-                        var client = new JsonRpcClient<TestActionHandler>("localhost", port);
-                        client_list.Add(client);
-                        client.Info.Username = "DefaultTestClient" + (int)state;
+			List<JsonRpcClient<TestActionHandler>> clients = new List<JsonRpcClient<TestActionHandler>>();
+			var random_long = 1684584139;
+			var client_list = new List<JsonRpcClient<TestActionHandler>>();
+			var wait_list = new List<ManualResetEvent>();
+			int client_count = 20;
+			for (int i = 0; i < client_count; i++) {
+				wait_list.Add(AddWait("Method call"));
+			}
 
-                        client.Actions.TestClientActions.MethodCalled += (sender2, e2) => {
-                            if (e2.Type == typeof(TestClientActions)) {
-                                if (e2.Method == "Test") {
-                                    Assert.Equal(random_long + sender2.Connector.Info.Id, ((TestClientActions.TestArgs)(e2.Arguments)).RandomLong);
-                                    wait_list[(int)state].Set();
-                                    client.Disconnect("Client test completed", JsonRpcSource.Client);
-                                }
-                            }
+			Server.OnStart += (sender, e) => {
 
-                        };
+				for (int i = 0; i < client_count; i++) {
+					Task.Factory.StartNew((object state) => {
+						var client = new JsonRpcClient<TestActionHandler>("localhost", port);
+						client_list.Add(client);
+						client.Info.Username = "DefaultTestClient" + (int)state;
 
-                        Task.Run(() => client.Connect());
-                    }, i);
-                }
-            };
+						client.Actions.TestClientActions.MethodCalled += (sender2, e2) => {
+							if (e2.Type == typeof(TestClientActions)) {
+								if (e2.Method == "Test") {
+									Assert.Equal(random_long + sender2.Connector.Info.Id, ((TestClientActions.TestArgs)(e2.Arguments)).RandomLong);
+									wait_list[(int)state].Set();
+									client.Disconnect("Client test completed", JsonRpcSource.Client);
+								}
+							}
 
-            Server.OnClientConnect += (sender2, e2) => {
+						};
+
+						Task.Run(() => client.Connect());
+					}, i);
+				}
+			};
+
+			Server.OnClientConnect += (sender2, e2) => {
 				e2.Client.Actions.TestClientActions.Test(new TestClientActions.TestArgs() { 
 					RandomLong = random_long + e2.Client.Info.Id
 				});
-            };
+			};
 
-            Task.Run(() => Server.Start());
+			Task.Run(() => Server.Start());
 
 
-            foreach (var wait in waits) {
-                if(wait.Item1 == "Server stop") {
-                    continue;
-                }
+			foreach (var wait in waits) {
+				if(wait.Item1 == "Server stop") {
+					continue;
+				}
 
-                Assert.True(wait.Item2.WaitOne(RESET_TIMEOUT), "Did not activate reset event: " + wait.Item1);
-            }
+				Assert.True(wait.Item2.WaitOne(RESET_TIMEOUT), "Did not activate reset event: " + wait.Item1);
+			}
 
-            Server.Stop("Test completed");
-        }
+			Server.Stop("Test completed");
+		}
 	}
 }

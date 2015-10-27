@@ -15,7 +15,7 @@ namespace DtronixJsonRpc {
 	/// Server to listen and respond via the JSON RPC protocol.
 	/// </summary>
 	/// <typeparam name="THandler">Action Handler to contain all action class instances.</typeparam>
-    public class JsonRpcServer<THandler> : IDisposable
+	public class JsonRpcServer<THandler> : IDisposable
 		where THandler : ActionHandler<THandler>, new() {
 
 		private static Logger logger = LogManager.GetCurrentClassLogger();
@@ -71,10 +71,10 @@ namespace DtronixJsonRpc {
 		/// Gets the dictionary with the active clients and their IDs.
 		/// </summary>
 		public ConcurrentDictionary<int, JsonRpcClient<THandler>> Clients {
-            get {
-                return clients;
-            }
-        }
+			get {
+				return clients;
+			}
+		}
 
 		private bool _IsStopping = false;
 		/// <summary>
@@ -112,7 +112,7 @@ namespace DtronixJsonRpc {
 		public JsonRpcServer(JsonRpcServerConfigurations configurations) {
 			Configurations = configurations;
 			cancellation_token_source = new CancellationTokenSource();
-            listener = new TcpListener(configurations.BindingAddress, configurations.BindingPort);
+			listener = new TcpListener(configurations.BindingAddress, configurations.BindingPort);
 
 			ping_timer = new System.Timers.Timer(Configurations.PingFrequency);
 
@@ -128,7 +128,7 @@ namespace DtronixJsonRpc {
 		/// <summary>
 		/// Starts listening for incoming clients.  Will listen on the same thread as the start method is called on.
 		/// </summary>
-        public void Start() {
+		public void Start() {
 
 			try {
 				logger.Info("Server: Starting");
@@ -140,10 +140,10 @@ namespace DtronixJsonRpc {
 			}
 
 			logger.Debug("Server: Listening for connections.");
-            IsRunning = true;
+			IsRunning = true;
 
 			// Invoke the event stating the server has started.
-            OnStart?.Invoke(this, this);
+			OnStart?.Invoke(this, this);
 
 			while (cancellation_token_source.IsCancellationRequested == false) {
 
@@ -153,16 +153,16 @@ namespace DtronixJsonRpc {
 				try {
 					// Wait synchronously for a new client to connect so that we can cancel.
 					client.Wait(cancellation_token_source.Token);
-                    logger.Debug("Server: New client attempting to connect");
+					logger.Debug("Server: New client attempting to connect");
 
-                } catch (OperationCanceledException e) {
+				} catch (OperationCanceledException e) {
 					logger.Info(e, "Server: Stopped listening for clients.", null);
-                    break;
+					break;
 
 				} catch (Exception e) {
 					logger.Error(e, "Server: Unknown exception occurred while listening for clients. Exception: {0}", e.ToString());
-                    break;
-                }
+					break;
+				}
 
 				// Create a new instance of the connector.
 				var client_listener = new JsonRpcClient<THandler>(this, client.Result, last_client_id++);
@@ -200,7 +200,7 @@ namespace DtronixJsonRpc {
 
 					// Start the ping timer.
 					ping_timer.Start();
-                };
+				};
 
 				// See if we have authentication
 				if (OnAuthenticationVerification != null) {
@@ -215,9 +215,9 @@ namespace DtronixJsonRpc {
 				clients.TryAdd(client_listener.Info.Id, client_listener);
 
 				// Connect and start listening to this client's requests on its own thread.
-                Task.Factory.StartNew(() => client_listener.Connect(), TaskCreationOptions.LongRunning);
+				Task.Factory.StartNew(() => client_listener.Connect(), TaskCreationOptions.LongRunning);
 
-            }
+			}
 
 			// If the server is shutting down, broadcast this event to all the clients before a disconnect.
 			if (cancellation_token_source.IsCancellationRequested) {
@@ -225,20 +225,20 @@ namespace DtronixJsonRpc {
 			}
 
 			logger.Info("Server: Stopped");
-        }
+		}
 
 		/// <summary>
 		/// Calls an action and passes it a connected client for each client.
 		/// </summary>
 		/// <param name="action">Action to invoke for each client.</param>
-        public void Broadcast(Action<JsonRpcClient<THandler>> action) {
-            foreach (var client in clients) {
+		public void Broadcast(Action<JsonRpcClient<THandler>> action) {
+			foreach (var client in clients) {
 				if (client.Value.Info.Status == ClientStatus.Connected) {
 					logger.Debug("Server: Broadcasting method to client {0}.", client.Value.Info.Id);
 					action(client.Value);
 				}
-            }
-        }
+			}
+		}
 
 		/// <summary>
 		/// Initiates a stop command for the server.
@@ -255,21 +255,21 @@ namespace DtronixJsonRpc {
 				if (cl.Info.Status != ClientStatus.Disconnecting) {
 					cl.Disconnect("Server Shutdown. Reason: " + reason, JsonRpcSource.Server);
 				}
-            });
+			});
 
 			cancellation_token_source.Cancel();
 
 			listener.Stop();
 
-            IsRunning = false;
+			IsRunning = false;
 
-            OnStop?.Invoke(this, this);
+			OnStop?.Invoke(this, this);
 
 		}
 
 		public void Dispose() {
 			Stop("Class object disposed");
-        }
+		}
 
 		
 	}

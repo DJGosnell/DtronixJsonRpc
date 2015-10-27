@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace DtronixJsonRpc{
-    public class ClientInfo{
+	public class ClientInfo{
 
 		private int _Id;
 
@@ -31,7 +31,7 @@ namespace DtronixJsonRpc{
 				}
 
 				_Username = value;
-            }
+			}
 		}
 
 		private ClientStatus _Status;
@@ -40,7 +40,7 @@ namespace DtronixJsonRpc{
 			get { return _Status; }
 			set {
 				_Status = value;
-            }
+			}
 		}
 
 

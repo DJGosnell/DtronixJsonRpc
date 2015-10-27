@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace DtronixJsonRpc {
 	public enum ClientStatus {
 		Unset = 1 << 0,
-        Connected = 1 << 1,
+		Connected = 1 << 1,
 		Connecting = 1 << 2,
 		Authorized = 1 << 3,
 		Disconnected = 1 << 4,

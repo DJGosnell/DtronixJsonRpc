@@ -355,7 +355,7 @@ namespace DtronixJsonRpc {
 					if(Info.Status == ClientStatus.Connecting) {
 						Disconnect("Client did not authenticate within time limitation.");
 					}
-                });
+				});
 
 				if (Mode == JsonRpcSource.Server) {
 					if (AuthenticateClient() == false) {

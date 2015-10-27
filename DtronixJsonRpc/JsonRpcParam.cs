@@ -9,7 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace DtronixJsonRpc {
-    public class JsonRpcParam<T> {
+	public class JsonRpcParam<T> {
 		[JsonProperty("jsonrpc")]
 		internal string JsonRPC { get; } = "2.0";
 

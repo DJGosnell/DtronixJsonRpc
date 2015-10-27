@@ -16,53 +16,53 @@ namespace DtronixJsonRpcTests {
 
 		[Fact]
 		public void ClientCallMethodBenchmark() {
-            Stopwatch sw;
-            int itterations = 1000;
-            Server.OnClientConnect += (sender, e) => {
-                sw = Stopwatch.StartNew();
-                for (int i = 0; i < itterations; i++) {
+			Stopwatch sw;
+			int itterations = 1000;
+			Server.OnClientConnect += (sender, e) => {
+				sw = Stopwatch.StartNew();
+				for (int i = 0; i < itterations; i++) {
 					e.Client.Actions.TestBenchmarkActions.TimeBetweenCalls(new TestBenchmarkActions.TimeBetweenCallsArgs() {
 						MaxCalls = itterations
 					});
-                }
-            };
+				}
+			};
 
-            Server.OnClientDisconnect += (sender, e) => {
-                sender.Stop("Test completed");
-            };
+			Server.OnClientDisconnect += (sender, e) => {
+				sender.Stop("Test completed");
+			};
 
 
 			StartServerConnectClient();
 
 		}
 
-        [Fact]
-        public void ClientConcurrentCallMethodBenchmark() {
-            int itterations = 1000;
+		[Fact]
+		public void ClientConcurrentCallMethodBenchmark() {
+			int itterations = 1000;
 
-            Server.OnClientConnect += (sender, e) => {
-                Parallel.For(0, itterations, (i) => {
+			Server.OnClientConnect += (sender, e) => {
+				Parallel.For(0, itterations, (i) => {
 					e.Client.Actions.TestBenchmarkActions.TimeBetweenCalls(new TestBenchmarkActions.TimeBetweenCallsArgs() { MaxCalls = itterations });
-                });
-            };
+				});
+			};
 
-            Server.OnClientDisconnect += (sender, e) => {
-                sender.Stop("Test completed");
-            };
+			Server.OnClientDisconnect += (sender, e) => {
+				sender.Stop("Test completed");
+			};
 
 
-            StartServerConnectClient();
+			StartServerConnectClient();
 
-        }
+		}
 
-        [Fact]
-        public void ServerCallMethodBenchmark() {
+		[Fact]
+		public void ServerCallMethodBenchmark() {
 
-            int itterations = 100;
-            int clients = 4;
-            var client_list = new List<JsonRpcClient<TestActionHandler>>();
+			int itterations = 100;
+			int clients = 4;
+			var client_list = new List<JsonRpcClient<TestActionHandler>>();
 
-            Server.OnStart += (sender, e) => {
+			Server.OnStart += (sender, e) => {
 				for (int i = 0; i < clients; i++) {
 					Task.Factory.StartNew((object number) => {
 						var client = new JsonRpcClient<TestActionHandler>("localhost", port);
@@ -79,25 +79,25 @@ namespace DtronixJsonRpcTests {
 						client.Connect();
 					}, i);
 				}
-            };
+			};
 
-            Server.OnClientDisconnect += (sender, e) => {
-                if(TestBenchmarkActions.call_times == (itterations * clients)){
-                    sender.Stop("Test completed");
-                }
-            };
-
-
-            Server.Start();
-
-            Server.OnStart += (sender, e) => {
-                Task.Run(() => Client.Connect());
-
-            };
+			Server.OnClientDisconnect += (sender, e) => {
+				if(TestBenchmarkActions.call_times == (itterations * clients)){
+					sender.Stop("Test completed");
+				}
+			};
 
 
+			Server.Start();
 
-        }
+			Server.OnStart += (sender, e) => {
+				Task.Run(() => Client.Connect());
+
+			};
+
+
+
+		}
 
 	}
 }

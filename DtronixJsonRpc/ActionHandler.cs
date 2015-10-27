@@ -27,7 +27,7 @@ namespace DtronixJsonRpc {
 
 		public void AddActions(string name, JsonRpcActions<IActionHandler> actions) {
 			loaded_actions.Add( actions)
-        }*/
+		}*/
 
 			
 
@@ -78,7 +78,7 @@ namespace DtronixJsonRpc {
 				called_method_info.attribute_info = called_method_info.method_info.GetCustomAttribute<ActionMethodAttribute>();
 
 				
-               if (called_method_info.attribute_info == null) {
+			   if (called_method_info.attribute_info == null) {
 					throw new InvalidOperationException("Method called is not allowed to be called.");
 				}
 
