@@ -34,8 +34,10 @@ namespace DtronixJsonRpcTests {
 			var server_stop_reset = AddWait("Server stop");
 
 			this.output = output;
-			Server = new JsonRpcServer<TestActionHandler>(port);
-			Client = new JsonRpcClient<TestActionHandler>("localhost", port);
+			Server = new JsonRpcServer<TestActionHandler>(new JsonRpcServerConfigurations() {
+				BindingPort = port
+			});
+			Client = JsonRpcClient<TestActionHandler>.CreateClient("localhost", port);
 			Client.Info.Username = "DefaultTestClient";
 
 			Server.OnStop += (sender, e) => {

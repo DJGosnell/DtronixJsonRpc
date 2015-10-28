@@ -43,7 +43,7 @@ namespace DtronixJsonRpcTests {
 			var random_long = 1684584139;
 
 			Client.OnConnect += (sender, e) => {
-				Server.Clients[0].Actions.TestClientActions.Test(new TestClientActions.TestArgs(){
+				Server.Clients[0].Actions.TestClientActions.Test(new TestClientActions.TestArgs() {
 					RandomLong = random_long
 				});
 			};
@@ -53,7 +53,7 @@ namespace DtronixJsonRpcTests {
 					if (e.Method == "Test") {
 						Assert.Equal(random_long, ((TestClientActions.TestArgs)e.Arguments).RandomLong);
 						called_method_reset.Set();
-						Client.Disconnect("Test completed", JsonRpcSource.Client);
+						Client.Disconnect("Test completed");
 					}
 				}
 

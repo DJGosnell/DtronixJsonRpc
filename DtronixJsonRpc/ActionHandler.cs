@@ -1,16 +1,12 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json.Linq;
 using NLog;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DtronixJsonRpc {
-	public class ActionHandler<THandler> 
+	public class ActionHandler<THandler>
 		where THandler : ActionHandler<THandler>, new() {
 
 		private static Logger logger = LogManager.GetCurrentClassLogger();
@@ -29,14 +25,14 @@ namespace DtronixJsonRpc {
 			loaded_actions.Add( actions)
 		}*/
 
-			
+
 
 		private static ConcurrentDictionary<string, CalledMethodInfo> called_method_cache = new ConcurrentDictionary<string, CalledMethodInfo>();
 		private static object method_cache_lock = new object();
 
 		private Dictionary<string, object> instance_cache = new Dictionary<string, object>();
 
-		
+
 
 		public void ExecuteAction(string method, JToken data) {
 			CalledMethodInfo called_method_info;
@@ -77,8 +73,8 @@ namespace DtronixJsonRpc {
 				// Get the attributes.
 				called_method_info.attribute_info = called_method_info.method_info.GetCustomAttribute<ActionMethodAttribute>();
 
-				
-			   if (called_method_info.attribute_info == null) {
+
+				if (called_method_info.attribute_info == null) {
 					throw new InvalidOperationException("Method called is not allowed to be called.");
 				}
 
@@ -89,7 +85,7 @@ namespace DtronixJsonRpc {
 			// Use the first parameter.
 			Type parameter_type = called_method_info.parameter_info[0]?.ParameterType;
 
-			if(parameter_type == null) {
+			if (parameter_type == null) {
 				throw new InvalidOperationException("Called method does not have a parameter which to pass the data to.");
 			}
 

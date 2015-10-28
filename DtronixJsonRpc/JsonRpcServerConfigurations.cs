@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Net;
 
 namespace DtronixJsonRpc {
 	/// <summary>
@@ -11,7 +6,7 @@ namespace DtronixJsonRpc {
 	/// </summary>
 	public class JsonRpcServerConfigurations {
 
-		public enum JsonMode {
+		public enum TransportMode {
 			/// <summary>
 			/// Broadcast the data in UTF8 text JSON.
 			/// </summary>
@@ -42,11 +37,11 @@ namespace DtronixJsonRpc {
 		public bool BroadcastClientStatusChanges { get; set; } = true;
 
 		/// <summary>
-		/// Sets the data mode of the server & connectors.
+		/// Sets the data transport of the server & connectors.
 		/// 
 		/// Default: BSON.
 		/// </summary>
-		public JsonMode DataMode { get; set; } = JsonMode.Bson;
+		public TransportMode TransportProtocol { get; set; } = TransportMode.Bson;
 
 		public bool PingClients { get; set; } = true;
 

@@ -20,7 +20,7 @@ namespace DtronixJsonRpcTests {
 
 			Client.OnConnect += (sender, e) => {
 				started_reset.Set();
-				Client.Disconnect("Test disconnection", JsonRpcSource.Client);
+				Client.Disconnect("Test disconnection");
 			};
 
 			Client.OnDisconnect += (sender, e) => {
@@ -124,7 +124,7 @@ namespace DtronixJsonRpcTests {
 
 				for (int i = 0; i < client_count; i++) {
 					Task.Factory.StartNew((object state) => {
-						var client = new JsonRpcClient<TestActionHandler>("localhost", port);
+						var client = JsonRpcClient<TestActionHandler>.CreateClient("localhost", port);
 						client_list.Add(client);
 						client.Info.Username = "DefaultTestClient" + (int)state;
 
@@ -133,7 +133,7 @@ namespace DtronixJsonRpcTests {
 								if (e2.Method == "Test") {
 									Assert.Equal(random_long + sender2.Connector.Info.Id, ((TestClientActions.TestArgs)(e2.Arguments)).RandomLong);
 									wait_list[(int)state].Set();
-									client.Disconnect("Client test completed", JsonRpcSource.Client);
+									client.Disconnect("Client test completed");
 								}
 							}
 
@@ -145,7 +145,7 @@ namespace DtronixJsonRpcTests {
 			};
 
 			Server.OnClientConnect += (sender2, e2) => {
-				e2.Client.Actions.TestClientActions.Test(new TestClientActions.TestArgs() { 
+				e2.Client.Actions.TestClientActions.Test(new TestClientActions.TestArgs() {
 					RandomLong = random_long + e2.Client.Info.Id
 				});
 			};
@@ -154,7 +154,7 @@ namespace DtronixJsonRpcTests {
 
 
 			foreach (var wait in waits) {
-				if(wait.Item1 == "Server stop") {
+				if (wait.Item1 == "Server stop") {
 					continue;
 				}
 

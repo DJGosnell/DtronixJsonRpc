@@ -65,7 +65,7 @@ namespace DtronixJsonRpcTests {
 			Server.OnStart += (sender, e) => {
 				for (int i = 0; i < clients; i++) {
 					Task.Factory.StartNew((object number) => {
-						var client = new JsonRpcClient<TestActionHandler>("localhost", port);
+						var client = JsonRpcClient<TestActionHandler>.CreateClient("localhost", port);
 						client_list.Add(client);
 						client.Info.Username = "DefaultTestClient" + number;
 
@@ -82,7 +82,7 @@ namespace DtronixJsonRpcTests {
 			};
 
 			Server.OnClientDisconnect += (sender, e) => {
-				if(TestBenchmarkActions.call_times == (itterations * clients)){
+				if (TestBenchmarkActions.call_times == (itterations * clients)) {
 					sender.Stop("Test completed");
 				}
 			};
