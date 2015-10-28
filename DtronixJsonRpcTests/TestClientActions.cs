@@ -10,8 +10,6 @@ using System.Threading.Tasks;
 namespace DtronixJsonRpcTests {
 	public class TestClientActions : JsonRpcActions<TestActionHandler> {
 
-		public event EventHandler<TestClientActions, TestClientMethodCalledEventArgs<object>> MethodCalled;
-
 		new public JsonRpcClient<TestActionHandler> Connector { get { return base.Connector; } }
 
 		public TestClientActions(JsonRpcClient<TestActionHandler> connector, [CallerMemberName] string member_name = "") : base(connector, member_name) {
@@ -26,6 +24,7 @@ namespace DtronixJsonRpcTests {
 		[ActionMethod(JsonRpcSource.Client)]
 		public void Test(TestArgs args, bool received = false) {
 			if (SendAndReceived(args, received)) {
+				Connector
 				MethodCalled?.Invoke(this, new TestClientMethodCalledEventArgs<object>(args, GetType()));
 			}
 

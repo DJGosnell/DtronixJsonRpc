@@ -115,7 +115,7 @@ namespace DtronixJsonRpcTests {
 			var random_long = 1684584139;
 			var client_list = new List<JsonRpcClient<TestActionHandler>>();
 			var wait_list = new List<ManualResetEvent>();
-			int client_count = 20;
+			int client_count = 1;
 			for (int i = 0; i < client_count; i++) {
 				wait_list.Add(AddWait("Method call"));
 			}
