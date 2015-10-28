@@ -165,7 +165,7 @@ namespace DtronixJsonRpc {
 				}
 
 				// Create a new instance of the connector.
-				var client_listener = new JsonRpcClient<THandler>(this, client.Result, last_client_id++);
+				var client_listener = JsonRpcClient<THandler>.CreateConnector(this, client.Result, last_client_id++);
 
 				client_listener.OnDisconnect += (sender, e) => {
 					logger.Info("Server: Client ({0}) disconnected. Reason: {1}. Removing from list of active clients.", sender.Info.Id, e.Reason);
