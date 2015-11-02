@@ -296,7 +296,13 @@ namespace DtronixJsonRpc {
 				Send(new JsonRpcParam<ClientInfo>(null, Info), true);
 
 				// Read the ID from the server
-				var uid_args = Read().ToObject<JsonRpcParam<int>>();
+				var uid_args = Read()?.ToObject<JsonRpcParam<int>>();
+
+				if(uid_args == null) {
+					Disconnect("Server connection closed.");
+					return;
+				}
+
 				Info.Id = uid_args.Args;
 
 				// Authorize the client with the specified events.
@@ -514,7 +520,7 @@ namespace DtronixJsonRpc {
 		}
 
 		/// <summary>
-		/// Reads the next Json object from the stream with the defined transport protocol.
+		/// Reads the next JSON object from the stream with the defined transport protocol.
 		/// </summary>
 		/// <returns>Raw data object from the stream.</returns>
 		private JToken Read() {

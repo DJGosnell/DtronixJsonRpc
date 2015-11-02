@@ -70,11 +70,12 @@
   </Choose>
   <ItemGroup>
     <Compile Include="BaseTest.cs" />
-    <Compile Include="BenchmarkTests.cs" />
-    <Compile Include="ServerTests.cs" />
+    <None Include="BenchmarkTests.cs" />
+    <Compile Include="JsonRpcClientTests.cs" />
+    <None Include="ServerTests.cs" />
     <Compile Include="TestBenchmarkActions.cs" />
     <Compile Include="TestClientActions.cs" />
-    <Compile Include="ClientTests.cs" />
+    <None Include="ClientTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TestActionHandler.cs" />
   </ItemGroup>

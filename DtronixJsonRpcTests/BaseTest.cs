@@ -28,6 +28,7 @@ namespace DtronixJsonRpcTests {
 
 		protected List<Tuple<string, WaitHandle>> waits = new List<Tuple<string, WaitHandle>>();
 
+
 		public BaseTest(ITestOutputHelper output) {
 			port = Interlocked.Increment(ref port_increment);
 
@@ -39,6 +40,8 @@ namespace DtronixJsonRpcTests {
 			});
 			Client = JsonRpcClient<TestActionHandler>.CreateClient("localhost", port);
 			Client.Info.Username = "DefaultTestClient";
+			Server.DataObject = this;
+			Client.DataObject = this;
 
 			Server.OnStop += (sender, e) => {
 				server_stop_reset.Set();
