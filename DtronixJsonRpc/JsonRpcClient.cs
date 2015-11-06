@@ -190,7 +190,7 @@ namespace DtronixJsonRpc {
 				Send(new JsonRpcParam<int>(null, Info.Id), true);
 
 				// Read the authentication "Data" text.
-				JsonRpcParam<string> authentication_text = Read()?.ToObject<JsonRpcParam<string>>();
+				var authentication_text = Read()?.ToObject<JsonRpcParam<string>>();
 
 				// Check to ensure a valid user info class was passed.
 				if (user_info == null) {
@@ -477,7 +477,7 @@ namespace DtronixJsonRpc {
 
 				// Method called when the authentication process fails.  Provides the reason why.
 				if (Mode == JsonRpcSource.Client) {
-					logger.Debug("{0} CID {1}: Authorized", Mode, Info.Id);
+					logger.Debug("{0} CID {1}: Failed authentication", Mode, Info.Id);
 
 					var reason = data.ToObject<JsonRpcParam<string>>().Args;
 					OnAuthenticationFailure?.Invoke(this, new AuthenticationFailureEventArgs(reason));
@@ -487,6 +487,7 @@ namespace DtronixJsonRpc {
 
 				// Method called when the authentication process succeeds.
 				if (Mode == JsonRpcSource.Client) {
+					logger.Debug("{0} CID {1}: Authenticated.", Mode, Info.Id);
 					OnConnect?.Invoke(this, new ClientConnectEventArgs<THandler>(Server, this));
 				}
 
