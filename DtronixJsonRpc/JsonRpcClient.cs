@@ -61,6 +61,11 @@ namespace DtronixJsonRpc {
 		internal event EventHandler<JsonRpcClient<THandler>, ConnectorAuthenticationEventArgs> OnAuthenticationVerify;
 
 		/// <summary>
+		/// Event called by the connector when it has received data from the other party.
+		/// </summary>
+		internal event EventHandler<JsonRpcClient<THandler>, OnDataReceivedEventArgs> OnDataReceived;
+
+		/// <summary>
 		/// Mode this client is set to.
 		/// </summary>
 		/// <remarks>
@@ -404,6 +409,9 @@ namespace DtronixJsonRpc {
 
 					// Read synchronously.  Will wait until data is read from the stream or the underlying stream is canceled.
 					data = Read();
+
+					// Call the internal event.
+					OnDataReceived?.Invoke(this, new OnDataReceivedEventArgs(data));
 
 					// See if we have reached the end of the stream.
 					if (data == null) {

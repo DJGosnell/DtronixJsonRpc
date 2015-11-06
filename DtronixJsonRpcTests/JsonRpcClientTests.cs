@@ -14,7 +14,7 @@ using Xunit;
 using Xunit.Abstractions;
 
 namespace DtronixJsonRpcTests {
-	public class JsonRpcClientTests : IDisposable {
+	public class JsonRpcClientTests {
 		private ITestOutputHelper output;
 
 		public static int port = 2827;
@@ -31,6 +31,8 @@ namespace DtronixJsonRpcTests {
 		private Task server_task;
 		private Task client_task;
 
+		private const string AUTH_TEXT = "ArbitraryAuthText";
+
 		public JsonRpcClientTests(ITestOutputHelper output) {
 			this.output = output;
 
@@ -42,7 +44,7 @@ namespace DtronixJsonRpcTests {
 			client = JsonRpcClient<TestActionHandler>.CreateClient("localhost", ((IPEndPoint)server.LocalEndpoint).Port, JsonRpcServerConfigurations.TransportMode.Bson);
 
 			client.OnAuthenticationRequest += (sender, e) => {
-				e.Data = "ArbitraryAuthText";
+				e.Data = AUTH_TEXT;
 			};
 		}
 
@@ -51,10 +53,38 @@ namespace DtronixJsonRpcTests {
 		}
 
 		[Fact]
+		public async void Read_should_read_data() {
+
+			server_task = new Task(() => {
+				CreateServerClient(AUTH_TEXT);
+				Send(new JsonRpcParam<string>("TestMethod", "This is my custom value"));
+				var wait = new ManualResetEvent(false);
+
+				client.OnDataReceived += (sender, e) => {
+					Assert.Equal("TestMethod", e.Data["method"]);
+					Assert.NotEqual("This is my custom value", e.Data["args"]);
+
+					DisconnectClient();
+					wait.Set();
+				};
+
+				Assert.True(wait.WaitOne(5000));
+
+			});
+
+			client_task = new Task(() => {
+				client.Connect();
+			});
+
+			await StartAndWaitClient();
+		}
+
+
+		[Fact]
 		public async void Connect_should_connect() {
 
 			server_task = new Task(() => {
-				CreateServerClient();
+				CreateServerClient(AUTH_TEXT);
 				Assert.NotNull(server_client_stream);
 				DisconnectClient();
 			});
@@ -68,8 +98,8 @@ namespace DtronixJsonRpcTests {
 		public async void Connect_should_authenticate() {
 
 			server_task = new Task(() => {
-				CreateServerClient();
-				Assert.True(Authenticate("ArbitraryAuthText"), "Successfully authenticated");
+				CreateServerClient(AUTH_TEXT);
+				
 				DisconnectClient();
 
 			});
@@ -81,10 +111,8 @@ namespace DtronixJsonRpcTests {
 
 		[Fact]
 		public async void Connect_should_fail_authentication() {
-
 			server_task = new Task(() => {
-				CreateServerClient();
-				Assert.False(Authenticate("FakeAuthData"), "Successfully authenticated");
+				CreateServerClient("FakeAuthData");
 				DisconnectClient();
 
 			});
@@ -92,8 +120,7 @@ namespace DtronixJsonRpcTests {
 			client_task = new Task(() => { client.Connect(); });
 
 			await StartAndWaitClient();
-
-		}
+        }
 
 		private JToken Read() {
 			// Move the head to the next token in the stream.
@@ -108,27 +135,30 @@ namespace DtronixJsonRpcTests {
 			writer.Flush();
 		}
 
-		private bool Authenticate(string auth_string) {
-			var client_info = Read().ToObject<JsonRpcParam<ClientInfo>>();
-			Send(new JsonRpcParam<int>(null, 1));
-			var authentication_text = Read().ToObject<JsonRpcParam<string>>();
 
-			if (auth_string == authentication_text.Args) {
-				Send(new JsonRpcParam<string>("rpc.OnAuthenticationSuccess"));
-				return true;
-			} else {
-				Send(new JsonRpcParam<string>("rpc.OnAuthenticationFailure", "Failed Validation"));
-				return false;
-			}
-		}
-
-		private void CreateServerClient() {
+		private bool CreateServerClient(string auth_string) {
 			server_client = server.AcceptTcpClient();
 			server_client_stream = server_client.GetStream();
 			writer = new BsonWriter(server_client_stream);
 			reader = new BsonReader(server_client_stream);
 			writer.Formatting = Formatting.None;
 			reader.SupportMultipleContent = true;
+
+			if(auth_string != null) {
+				var client_info = Read().ToObject<JsonRpcParam<ClientInfo>>();
+				Send(new JsonRpcParam<int>(null, 1));
+				var authentication_text = Read().ToObject<JsonRpcParam<string>>();
+
+				if (auth_string == authentication_text.Args) {
+					Send(new JsonRpcParam<string>("rpc.OnAuthenticationSuccess"));
+					return true;
+				} else {
+					Send(new JsonRpcParam<string>("rpc.OnAuthenticationFailure", "Failed Validation"));
+					return false;
+				}
+			}
+
+			return true;
 		}
 
 		private void DisconnectClient() {
@@ -147,11 +177,7 @@ namespace DtronixJsonRpcTests {
 				client.Disconnect("Test failed to complete within the time limitation.");
 				return false;
 			}
-			client.Disconnect("Test failed to complete within the time limitation.");
-			return true;
-		}
-
-		public void Dispose() {
+			client.Disconnect("Test completed.");
 
 
 			server_task.Exception?.Handle(ex => {
@@ -161,6 +187,10 @@ namespace DtronixJsonRpcTests {
 			client_task.Exception?.Handle(ex => {
 				throw ex;
 			});
+
+			return true;
 		}
+
+
 	}
 }

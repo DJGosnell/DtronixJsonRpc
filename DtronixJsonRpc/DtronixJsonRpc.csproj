@@ -60,6 +60,7 @@
     <Compile Include="ClientInfo.cs" />
     <Compile Include="ActionMethodCallEventArgs.cs" />
     <Compile Include="JsonRpcServerConfigurations.cs" />
+    <Compile Include="OnDataReceivedEventArgs.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="JsonRpcSource.cs" />
     <Compile Include="JsonRpcClient.cs" />
