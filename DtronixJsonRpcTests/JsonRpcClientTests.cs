@@ -62,13 +62,37 @@ namespace DtronixJsonRpcTests {
 
 				client.OnDataReceived += (sender, e) => {
 					Assert.Equal("TestMethod", e.Data["method"]);
-					Assert.NotEqual("This is my custom value", e.Data["args"]);
+					Assert.Equal("This is my custom value", e.Data["args"]);
 
 					DisconnectClient();
 					wait.Set();
 				};
 
-				Assert.True(wait.WaitOne(5000));
+				Assert.True(wait.WaitOne(2000));
+
+			});
+
+			client_task = new Task(() => {
+				client.Connect();
+			});
+
+			await StartAndWaitClient();
+		}
+
+		[Fact]
+		public async void Send_should_write_data() {
+
+			server_task = new Task(() => {
+				CreateServerClient(AUTH_TEXT);
+
+				client.Send(new JsonRpcParam<string>("TestMethod", "This is my custom value"));
+
+				var data = Read();
+
+				Assert.Equal("TestMethod", data["method"]);
+				Assert.Equal("This is my custom value", data["args"]);
+
+				DisconnectClient();
 
 			});
 
@@ -120,7 +144,7 @@ namespace DtronixJsonRpcTests {
 			client_task = new Task(() => { client.Connect(); });
 
 			await StartAndWaitClient();
-        }
+		}
 
 		private JToken Read() {
 			// Move the head to the next token in the stream.
@@ -170,23 +194,27 @@ namespace DtronixJsonRpcTests {
 		}
 
 		public async Task<bool> StartAndWaitClient() {
-			server_task.Start();
-			client_task.Start();
 
-			if (await Task.WhenAny(server_task, Task.Delay(5000)) != server_task) {
-				client.Disconnect("Test failed to complete within the time limitation.");
-				return false;
+			try {
+				server_task.Start();
+				client_task.Start();
+
+				if (await Task.WhenAny(server_task, Task.Delay(5000)) != server_task) {
+					client.Disconnect("Test failed to complete within the time limitation.");
+					return false;
+				}
+				client.Disconnect("Test completed.");
+			} finally {
+				server_task.Exception?.Handle(ex => {
+					throw ex;
+				});
+
+				client_task.Exception?.Handle(ex => {
+					throw ex;
+				});
 			}
-			client.Disconnect("Test completed.");
 
 
-			server_task.Exception?.Handle(ex => {
-				throw ex;
-			});
-
-			client_task.Exception?.Handle(ex => {
-				throw ex;
-			});
 
 			return true;
 		}
