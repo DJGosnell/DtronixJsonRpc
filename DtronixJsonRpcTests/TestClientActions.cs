@@ -31,6 +31,15 @@ namespace DtronixJsonRpcTests {
 		}
 
 		[ActionMethod(JsonRpcSource.Client)]
+		public void Noop(TestArgs args, bool received = false) {
+			if (SendAndReceived(args, received)) {
+			}
+
+		}
+
+
+
+		[ActionMethod(JsonRpcSource.Client)]
 		public void Test2(TestArgs args, bool received = false) {
 			if (SendAndReceived(args, received)) {
 				//MethodCalled?.Invoke(this, new TestClientMethodCalledEventArgs<object>(args, GetType()));

@@ -57,15 +57,17 @@ namespace DtronixJsonRpcTests {
 
 			server_task = new Task(() => {
 				CreateServerClient(AUTH_TEXT);
-				Send(new JsonRpcParam<string>("TestMethod", "This is my custom value"));
+				Send(new JsonRpcParam<TestClientActions.TestArgs>("TestClientActions.Noop", new TestClientActions.TestArgs() { RandomLong = 25166213 }));
 				var wait = new ManualResetEvent(false);
 
 				client.OnDataReceived += (sender, e) => {
-					Assert.Equal("TestMethod", e.Data["method"]);
-					Assert.Equal("This is my custom value", e.Data["args"]);
+					if (e.Data?["method"].ToString().StartsWith("rpc.") == false) {
+						Assert.Equal("TestClientActions.Noop", e.Data["method"]);
+						Assert.Equal(25166213, e.Data["args"].Value<long>("RandomLong"));
 
-					DisconnectClient();
-					wait.Set();
+						DisconnectClient();
+						wait.Set();
+					}
 				};
 
 				Assert.True(wait.WaitOne(2000));
@@ -74,6 +76,37 @@ namespace DtronixJsonRpcTests {
 
 			client_task = new Task(() => {
 				client.Connect();
+			});
+
+			await StartAndWaitClient();
+		}
+
+	
+		[Fact]
+		public async void Read_should_throw_on_invalid_method() {
+
+			server_task = new Task(() => {
+				CreateServerClient(AUTH_TEXT);
+				Send(new JsonRpcParam<TestClientActions.TestArgs>("TestClientActions.Noop", new TestClientActions.TestArgs() { RandomLong = 25166213 }));
+				//Send(new JsonRpcParam<string>("TestMethod", "This is my custom value"));
+				var wait = new ManualResetEvent(false);
+
+				client.OnDataReceived += (sender, e) => {
+					if (e.Data?["method"].ToString().StartsWith("rpc.") == false) {
+						Assert.Equal("TestMethod", e.Data["method"]);
+						Assert.Equal("This is my custom value", e.Data["args"]);
+
+						DisconnectClient();
+						wait.Set();
+					}
+				};
+
+				Assert.True(wait.WaitOne(2000));
+
+			});
+
+			client_task = new Task(() => {
+				Assert.Throws<InvalidOperationException>(() => client.Connect());
 			});
 
 			await StartAndWaitClient();
