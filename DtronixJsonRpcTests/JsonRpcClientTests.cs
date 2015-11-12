@@ -87,14 +87,13 @@ namespace DtronixJsonRpcTests {
 
 			server_task = new Task(() => {
 				CreateServerClient(AUTH_TEXT);
-				Send(new JsonRpcParam<TestClientActions.TestArgs>("TestClientActions.Noop", new TestClientActions.TestArgs() { RandomLong = 25166213 }));
+				Send(new JsonRpcParam<TestClientActions.TestArgs>("InvalidMethod", new TestClientActions.TestArgs() { RandomLong = 25166213 }));
 				//Send(new JsonRpcParam<string>("TestMethod", "This is my custom value"));
 				var wait = new ManualResetEvent(false);
 
 				client.OnDataReceived += (sender, e) => {
 					if (e.Data?["method"].ToString().StartsWith("rpc.") == false) {
-						Assert.Equal("TestMethod", e.Data["method"]);
-						Assert.Equal("This is my custom value", e.Data["args"]);
+						Assert.Equal("InvalidMethod", e.Data["method"]);
 
 						DisconnectClient();
 						wait.Set();
