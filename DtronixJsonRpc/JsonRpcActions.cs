@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Runtime.CompilerServices;
 
 namespace DtronixJsonRpc {
 	public abstract class JsonRpcActions<THandler> 
@@ -11,27 +6,20 @@ namespace DtronixJsonRpc {
 
 		private string reference_name;
 
-		protected JsonRpcConnector<THandler> Connector { get; }
+		protected JsonRpcClient<THandler> Connector { get; }
 
-		public JsonRpcActions(JsonRpcConnector<THandler> connector, [CallerMemberName] string member_name = "") {
+		public JsonRpcActions(JsonRpcClient<THandler> connector, [CallerMemberName] string member_name = "") {
 			this.Connector = connector;
 			reference_name = member_name;
-        }
-
-        protected bool SendAndReceived(JsonRpcActionArgs args, [CallerMemberName] string member_name = "") {
-			return SendAndReceived(args, reference_name, member_name);
 		}
 
-		protected bool SendAndReceived(JsonRpcActionArgs args, string class_name, [CallerMemberName] string member_name = "") {
-			if (args.Source == JsonRpcSource.Unset) {
-				args.Source = Connector.Mode;
-                Connector.Send(class_name + "." + member_name, args);
-				return false;
-
-			} else {
+		protected bool SendAndReceived<T>(T args, bool received, [CallerMemberName] string member_name = "") {
+			if (received) {
 				return true;
+			} else { 
+				Connector.Send(new JsonRpcParam<T>(reference_name + "." + member_name, args));
+				return false;
 			}
-
 		}
 
 	}

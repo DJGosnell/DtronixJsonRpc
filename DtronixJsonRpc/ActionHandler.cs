@@ -1,15 +1,12 @@
-﻿using Newtonsoft.Json;
+﻿using Newtonsoft.Json.Linq;
 using NLog;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DtronixJsonRpc {
-	public class ActionHandler<THandler> 
+	public class ActionHandler<THandler>
 		where THandler : ActionHandler<THandler>, new() {
 
 		private static Logger logger = LogManager.GetCurrentClassLogger();
@@ -20,26 +17,27 @@ namespace DtronixJsonRpc {
 			public ActionMethodAttribute attribute_info;
 		}
 
-		public JsonRpcConnector<THandler> Connector { get; set; }
+		public JsonRpcClient<THandler> Connector { get; set; }
 
 		/*private Dictionary<string, JsonRpcActions<IActionHandler>> loaded_actions = new Dictionary<string, JsonRpcActions<IActionHandler>>();
 
 		public void AddActions(string name, JsonRpcActions<IActionHandler> actions) {
 			loaded_actions.Add( actions)
-        }*/
+		}*/
 
-			
+
 
 		private static ConcurrentDictionary<string, CalledMethodInfo> called_method_cache = new ConcurrentDictionary<string, CalledMethodInfo>();
 		private static object method_cache_lock = new object();
 
 		private Dictionary<string, object> instance_cache = new Dictionary<string, object>();
 
-		
 
-		public void ExecuteAction(string method, string data) {
+
+		public void ExecuteAction(string method, JToken data) {
 			CalledMethodInfo called_method_info;
 			object instance_class;
+
 			var call_parts = method.Split('.');
 
 			// Get the class.
@@ -75,8 +73,8 @@ namespace DtronixJsonRpc {
 				// Get the attributes.
 				called_method_info.attribute_info = called_method_info.method_info.GetCustomAttribute<ActionMethodAttribute>();
 
-				
-               if (called_method_info.attribute_info == null) {
+
+				if (called_method_info.attribute_info == null) {
 					throw new InvalidOperationException("Method called is not allowed to be called.");
 				}
 
@@ -87,14 +85,8 @@ namespace DtronixJsonRpc {
 			// Use the first parameter.
 			Type parameter_type = called_method_info.parameter_info[0]?.ParameterType;
 
-			if(parameter_type == null) {
+			if (parameter_type == null) {
 				throw new InvalidOperationException("Called method does not have a parameter which to pass the data to.");
-			}
-			object json_object;
-			try {
-				json_object = JsonConvert.DeserializeObject(data, parameter_type);
-            } catch (Exception) {
-				throw new InvalidOperationException("Passed parameter for called method could not be read.");
 			}
 
 			if (called_method_info.attribute_info.Source != JsonRpcSource.Unset && called_method_info.attribute_info.Source != Connector.Mode) {
@@ -102,7 +94,7 @@ namespace DtronixJsonRpc {
 			}
 
 			try {
-				called_method_info.method_info.Invoke(instance_class, new object[] { json_object });
+				called_method_info.method_info.Invoke(instance_class, new object[] { data["args"].ToObject(parameter_type), true });
 
 			} catch (Exception e) {
 				throw e;
