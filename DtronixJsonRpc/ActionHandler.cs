@@ -100,7 +100,7 @@ namespace DtronixJsonRpc {
 
 				// If the method return value was not void, then send the result back to the other party.
 				if(called_method_info.method_info.ReturnType != typeof(void)) {
-					Connector.Send(new JsonRpcParam() {
+					Connector.Send(new JsonRpcRequest() {
 						Result = ((dynamic)result).Result,
 						Id = id
 					});

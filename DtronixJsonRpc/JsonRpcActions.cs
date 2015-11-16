@@ -18,7 +18,7 @@ namespace DtronixJsonRpc {
 				return false;
 			} else {
 				id = Connector.GetNewRequestId();
-				Connector.Send(new JsonRpcParam(reference_name + "." + member_name, args, id));
+				Connector.Send(new JsonRpcRequest(reference_name + "." + member_name, args, id));
 				return true;
 			}
 		}

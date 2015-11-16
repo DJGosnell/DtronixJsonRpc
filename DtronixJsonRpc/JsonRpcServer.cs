@@ -114,7 +114,7 @@ namespace DtronixJsonRpc {
 			ping_timer.Elapsed += (sender, e) => {
 				Broadcast(cl => {
 					cl.ping_stopwatch.Restart();
-					cl.Send(new JsonRpcParam("rpc.ping", JsonRpcSource.Server));
+					cl.Send(new JsonRpcRequest("rpc.ping", JsonRpcSource.Server));
 				});
 			};
 		}
@@ -181,7 +181,7 @@ namespace DtronixJsonRpc {
 					}
 
 					// Alert all the clients that this client disconnected.
-					Broadcast(cl => cl.Send(new JsonRpcParam("rpc." + nameof(JsonRpcClient<THandler>.OnConnectedClientChange), new ClientInfo[] { removed_client.Info })));
+					Broadcast(cl => cl.Send(new JsonRpcRequest("rpc." + nameof(JsonRpcClient<THandler>.OnConnectedClientChange), new ClientInfo[] { removed_client.Info })));
 
 					// Invoke the event stating that a client disconnected.
 					OnClientDisconnect?.Invoke(this, e);
@@ -216,7 +216,7 @@ namespace DtronixJsonRpc {
 
 			// If the server is shutting down, broadcast this event to all the clients before a disconnect.
 			if (cancellation_token_source.IsCancellationRequested) {
-				Broadcast(cl => cl.Send(new JsonRpcParam("rpc." + nameof(JsonRpcClient<THandler>.OnDisconnect), "Server shutting down.")));
+				Broadcast(cl => cl.Send(new JsonRpcRequest("rpc." + nameof(JsonRpcClient<THandler>.OnDisconnect), "Server shutting down.")));
 			}
 
 			logger.Info("Server: Stopped");

@@ -242,7 +242,7 @@ namespace DtronixJsonRpc {
 				var user_info = Read()["params"]?.ToObject<ClientInfo>();
 
 				// Send the ID to the client
-				Send(new JsonRpcParam(null, Info.Id), true);
+				Send(new JsonRpcRequest(null, Info.Id), true);
 
 				// Read the authentication "Data" text.
 				var authentication_text = Read()["params"]?.ToObject<string>();
@@ -294,7 +294,7 @@ namespace DtronixJsonRpc {
 				if (Info.Status != ClientStatus.Connected || failure_reason != null) {
 
 					// Inform the client that it failed authentication before disconnecting it.
-					Send(new JsonRpcParam("rpc." + nameof(OnAuthenticationFailure), failure_reason), true);
+					Send(new JsonRpcRequest("rpc." + nameof(OnAuthenticationFailure), failure_reason), true);
 
 					// Disconnect the client if it has not passed authentication.
 					Disconnect("Authentication Failed. Reason: " + failure_reason);
@@ -302,7 +302,7 @@ namespace DtronixJsonRpc {
 
 				} else {
 					// Inform the client that it has successfully authenticated.
-					Send(new JsonRpcParam("rpc.OnAuthenticationSuccess"), true);
+					Send(new JsonRpcRequest("rpc.OnAuthenticationSuccess"), true);
 
 					// Invoke the client connect event on the server.
 					OnConnect?.Invoke(this, new ClientConnectEventArgs<THandler>(Server, this));
@@ -328,13 +328,13 @@ namespace DtronixJsonRpc {
 					}
 
 					// Send the info to the client.
-					cl.Send(new JsonRpcParam("rpc." + nameof(OnConnectedClientChange), new ClientInfo[] { Info }));
+					cl.Send(new JsonRpcRequest("rpc." + nameof(OnConnectedClientChange), new ClientInfo[] { Info }));
 				});
 			}
 
 			// Inform this client that it has connected and send it all the connected clients.
 			if (Server.Configurations.BroadcastClientStatusChanges) {
-				Send(new JsonRpcParam("rpc." + nameof(OnConnectedClientChange), Server.Clients.Select(cl => cl.Value.Info).ToArray()), true);
+				Send(new JsonRpcRequest("rpc." + nameof(OnConnectedClientChange), Server.Clients.Select(cl => cl.Value.Info).ToArray()), true);
 			}
 
 			logger.Debug("{0} CID {1}: Successfully authorized on the server.", Mode, Info.Id);
@@ -348,7 +348,7 @@ namespace DtronixJsonRpc {
 		protected virtual void RequestAuthentication() {
 			try {
 				// Send this client info to the server.
-				Send(new JsonRpcParam(null, Info), true);
+				Send(new JsonRpcRequest(null, Info), true);
 
 				// Read the ID from the server
 				var uid = Read()?["params"]?.ToObject<int>();
@@ -367,7 +367,7 @@ namespace DtronixJsonRpc {
 				OnAuthenticationRequest?.Invoke(this, auth_args);
 
 				// Send the data to the server to verify.
-				Send(new JsonRpcParam(null, auth_args.Data ?? ""), true);
+				Send(new JsonRpcRequest(null, auth_args.Data ?? ""), true);
 
 			} catch (OperationCanceledException) {
 				Disconnect("Server authentication timed out.");
@@ -573,13 +573,13 @@ namespace DtronixJsonRpc {
 				if (Mode == JsonRpcSource.Server) {
 					ping_stopwatch.Stop();
 					Ping = ping_stopwatch.ElapsedMilliseconds;
-					Send(new JsonRpcParam("rpc.ping-result", Ping));
+					Send(new JsonRpcRequest("rpc.ping-result", Ping));
 
 					logger.Trace("{0} CID {1}: Ping {2}ms", Mode, Info.Id, Ping);
 
 				} else {
 					// Ping back immediately to the server.
-					Send(new JsonRpcParam("rpc.ping", Mode));
+					Send(new JsonRpcRequest("rpc.ping", Mode));
 				}
 
 			} else if (method == "rpc.ping-result") {
@@ -645,7 +645,7 @@ namespace DtronixJsonRpc {
 		/// <typeparam name="T">Data type that will be sent.</typeparam>
 		/// <param name="parameters">Data to send over the stream.</param>
 		/// <param name="force_send">Set to true to ignore connection status. Otherwise, will throw if data is sent over a connecting connection.</param>
-		internal void Send(JsonRpcParam parameters, bool force_send = false) {
+		internal void Send(JsonRpcRequest parameters, bool force_send = false) {
 
 			// Prevent data from being sent when the client has been requested to stop.
 			if (cancellation_token_source.IsCancellationRequested) {
@@ -741,7 +741,7 @@ namespace DtronixJsonRpc {
 
 			// If we are disconnecting, let the other party know.
 			if (Mode == source && client.Client.Connected) {
-				Send(new JsonRpcParam("rpc." + nameof(OnDisconnect), new ClientInfo[] { Info }));
+				Send(new JsonRpcRequest("rpc." + nameof(OnDisconnect), new ClientInfo[] { Info }));
 			}
 
 			// Invoke the disconnect event.

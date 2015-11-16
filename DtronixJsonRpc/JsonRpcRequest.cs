@@ -2,7 +2,7 @@
 using System.ComponentModel;
 
 namespace DtronixJsonRpc {
-	public class JsonRpcParam {
+	public class JsonRpcRequest {
 		[JsonProperty("jsonrpc")]
 		internal string JsonRPC { get; } = "2.0";
 
@@ -20,24 +20,24 @@ namespace DtronixJsonRpc {
 
 		public event PropertyChangedEventHandler PropertyChanged;
 
-		public JsonRpcParam() {
+		public JsonRpcRequest() {
 
 		}
 
-		public JsonRpcParam(object parameters) {
+		public JsonRpcRequest(object parameters) {
 			Params = parameters;
 		}
 
-		internal JsonRpcParam(string method) {
+		internal JsonRpcRequest(string method) {
 			Method = method;
 		}
 
-		internal JsonRpcParam(string method, object parameters) {
+		internal JsonRpcRequest(string method, object parameters) {
 			Method = method;
 			Params = parameters;
 		}
 
-		internal JsonRpcParam(string method, object parameters, string id) {
+		internal JsonRpcRequest(string method, object parameters, string id) {
 			Method = method;
 			Params = parameters;
 			Id = id;
