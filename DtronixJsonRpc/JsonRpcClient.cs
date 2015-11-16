@@ -3,6 +3,7 @@ using Newtonsoft.Json.Bson;
 using Newtonsoft.Json.Linq;
 using NLog;
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -20,6 +21,11 @@ namespace DtronixJsonRpc {
 	/// <typeparam name="THandler">Action Handler to contain all action class instances.</typeparam>
 	public class JsonRpcClient<THandler> : IDisposable
 		where THandler : ActionHandler<THandler>, new() {
+
+		private class ReturnResult {
+			public ManualResetEventSlim reset_event;
+			public JToken result;
+		}
 
 		private static Logger logger = LogManager.GetCurrentClassLogger();
 
@@ -104,12 +110,20 @@ namespace DtronixJsonRpc {
 		/// </summary>
 		public THandler Actions { get; }
 
-
-
 		/// <summary>
 		/// Object that is referenced by the action handlers.
 		/// </summary>
 		public object DataObject { get; set; }
+
+		private long _RequestId = 0;
+
+		/// <summary>
+		/// Id number for sending requests to the server to allow for requests to be matched up to their responses.
+		/// </summary>
+		public long RequestId {
+			get { return _RequestId; }
+		}
+
 
 
 		private readonly CancellationTokenSource cancellation_token_source = new CancellationTokenSource();
@@ -124,6 +138,9 @@ namespace DtronixJsonRpc {
 		private JsonSerializer serializer;
 		private object write_lock = new object();
 		private JsonRpcServerConfigurations.TransportMode transport_protocol;
+		private ConcurrentDictionary<string, ReturnResult> return_wait_results = new ConcurrentDictionary<string, ReturnResult>();
+
+
 
 
 		internal Stopwatch ping_stopwatch;
@@ -181,6 +198,39 @@ namespace DtronixJsonRpc {
 		}
 
 		/// <summary>
+		/// Increments to the next request ID and returns it as a string.
+		/// </summary>
+		/// <returns>String representation of the request ID.</returns>
+		public string GetNewRequestId() {
+			return Interlocked.Increment(ref _RequestId).ToString();
+		}
+
+		public async Task<T> WaitForResult<T>(string id) {
+			ReturnResult result;
+			try {
+				
+				if (return_wait_results.TryGetValue(id, out result) == false) {
+					logger.Fatal("{0} CID {1}: Could not get wait for request ID '{2}'.", Mode, Info.Id, id);
+				}
+
+				logger.Trace("{0} CID {1}: Waiting for result from request ID '{2}'.", Mode, Info.Id, id);
+
+				// Set the wait inside a task and set the timeouts.
+				await Task.Run(() => result.reset_event.Wait(30000, cancellation_token_source.Token));
+
+				logger.Trace("{0} CID {1}: Result received for request ID '{2}'.", Mode, Info.Id, id);
+
+				return result.result["result"].ToObject<T>();
+			} finally {
+				if(return_wait_results.TryRemove(id, out result)) {
+					logger.Fatal("{0} CID {1}: Could not remove the wait for request ID '{2}'.", Mode, Info.Id, id);
+				}
+			}
+			
+
+		}
+
+		/// <summary>
 		/// Method to provide authentication verification from the server side.
 		/// </summary>
 		/// <returns>Returns on successful authentication. False otherwise.</returns>
@@ -189,13 +239,13 @@ namespace DtronixJsonRpc {
 				string failure_reason = null;
 
 				// Read the user info object.
-				var user_info = Read().ToObject<JsonRpcParam<ClientInfo>>();
+				var user_info = Read()["params"]?.ToObject<ClientInfo>();
 
 				// Send the ID to the client
-				Send(new JsonRpcParam<int>(null, Info.Id), true);
+				Send(new JsonRpcParam(null, Info.Id), true);
 
 				// Read the authentication "Data" text.
-				var authentication_text = Read()?.ToObject<JsonRpcParam<string>>();
+				var authentication_text = Read()["params"]?.ToObject<string>();
 
 				// Check to ensure a valid user info class was passed.
 				if (user_info == null) {
@@ -203,7 +253,7 @@ namespace DtronixJsonRpc {
 				}
 
 				// Clean the username.
-				Info.Username = user_info?.Args.Username?.Trim();
+				Info.Username = user_info?.Username?.Trim();
 
 				// Check to ensure the client should connect.
 				if (Server.Clients.Values.Any(cli => cli.Info.Id != Info.Id && cli.Info.Username == Info.Username)) {
@@ -217,7 +267,7 @@ namespace DtronixJsonRpc {
 
 				// Authorize client.
 				var auth_args = new ConnectorAuthenticationEventArgs() {
-					Data = authentication_text.Args
+					Data = authentication_text
 				};
 
 				// Verify the client against the event set.
@@ -244,7 +294,7 @@ namespace DtronixJsonRpc {
 				if (Info.Status != ClientStatus.Connected || failure_reason != null) {
 
 					// Inform the client that it failed authentication before disconnecting it.
-					Send(new JsonRpcParam<string>("rpc." + nameof(OnAuthenticationFailure), failure_reason), true);
+					Send(new JsonRpcParam("rpc." + nameof(OnAuthenticationFailure), failure_reason), true);
 
 					// Disconnect the client if it has not passed authentication.
 					Disconnect("Authentication Failed. Reason: " + failure_reason);
@@ -252,7 +302,7 @@ namespace DtronixJsonRpc {
 
 				} else {
 					// Inform the client that it has successfully authenticated.
-					Send(new JsonRpcParam<string>("rpc.OnAuthenticationSuccess"), true);
+					Send(new JsonRpcParam("rpc.OnAuthenticationSuccess"), true);
 
 					// Invoke the client connect event on the server.
 					OnConnect?.Invoke(this, new ClientConnectEventArgs<THandler>(Server, this));
@@ -278,13 +328,13 @@ namespace DtronixJsonRpc {
 					}
 
 					// Send the info to the client.
-					cl.Send(new JsonRpcParam<ClientInfo[]>("rpc." + nameof(OnConnectedClientChange), new ClientInfo[] { Info }));
+					cl.Send(new JsonRpcParam("rpc." + nameof(OnConnectedClientChange), new ClientInfo[] { Info }));
 				});
 			}
 
 			// Inform this client that it has connected and send it all the connected clients.
 			if (Server.Configurations.BroadcastClientStatusChanges) {
-				Send(new JsonRpcParam<ClientInfo[]>("rpc." + nameof(OnConnectedClientChange), Server.Clients.Select(cl => cl.Value.Info).ToArray()), true);
+				Send(new JsonRpcParam("rpc." + nameof(OnConnectedClientChange), Server.Clients.Select(cl => cl.Value.Info).ToArray()), true);
 			}
 
 			logger.Debug("{0} CID {1}: Successfully authorized on the server.", Mode, Info.Id);
@@ -298,17 +348,17 @@ namespace DtronixJsonRpc {
 		protected virtual void RequestAuthentication() {
 			try {
 				// Send this client info to the server.
-				Send(new JsonRpcParam<ClientInfo>(null, Info), true);
+				Send(new JsonRpcParam(null, Info), true);
 
 				// Read the ID from the server
-				var uid_args = Read()?.ToObject<JsonRpcParam<int>>();
+				var uid = Read()?["params"]?.ToObject<int>();
 
-				if(uid_args == null) {
+				if(uid == null) {
 					Disconnect("Server connection closed.");
 					return;
 				}
 
-				Info.Id = uid_args.Args;
+				Info.Id = uid.Value;
 
 				// Authorize the client with the specified events.
 				var auth_args = new ConnectorAuthenticationEventArgs();
@@ -317,7 +367,7 @@ namespace DtronixJsonRpc {
 				OnAuthenticationRequest?.Invoke(this, auth_args);
 
 				// Send the data to the server to verify.
-				Send(new JsonRpcParam<string>(null, auth_args.Data ?? ""), true);
+				Send(new JsonRpcParam(null, auth_args.Data ?? ""), true);
 
 			} catch (OperationCanceledException) {
 				Disconnect("Server authentication timed out.");
@@ -418,6 +468,23 @@ namespace DtronixJsonRpc {
 						return;
 					}
 
+					// Determine if we have and ID.
+					string id = data["id"]?.ToObject<string>();
+
+					// If we have an ID and we have a wait handle, then we have and existing method to return a value to.
+					if (id != null && return_wait_results.Count != 0) {
+						ReturnResult return_result;
+						if (return_wait_results.TryGetValue(id, out return_result)) {
+							return_result.result = data;
+
+							// Let the other thread know it is OK to continue.
+							return_result.reset_event.Set();
+
+							// Continue on to the next request.
+							continue;
+						}
+					}
+
 					// Get the called method once and determine what to do with the data.
 					string method = data["method"].Value<string>();
 
@@ -436,7 +503,7 @@ namespace DtronixJsonRpc {
 						if (method.StartsWith("rpc.")) {
 							ExecuteExtentionAction(method, data);
 						} else {
-							Actions.ExecuteAction(method, data);
+							Actions.ExecuteAction(method, data, id);
 						}
 
 					} catch (Exception e) {
@@ -471,14 +538,14 @@ namespace DtronixJsonRpc {
 				// Method called to alert this client of changes to other clients on the server.
 				// Optionally called depending on the server configurations.
 				if (Mode == JsonRpcSource.Client) {
-					var clients_info = data.ToObject<JsonRpcParam<ClientInfo[]>>().Args;
+					var clients_info = data["params"].ToObject<ClientInfo[]>();
 					OnConnectedClientChange?.Invoke(this, new ConnectedClientChangedEventArgs(clients_info));
 				}
 
 			} else if (method == "rpc." + nameof(OnDisconnect)) {
 
 				// Method called when disconnected by the other end of the connection.
-				var clients_info = data.ToObject<JsonRpcParam<ClientInfo[]>>().Args;
+				var clients_info = data["params"].ToObject<ClientInfo[]>();
 				Disconnect(clients_info[0].DisconnectReason, (Mode == JsonRpcSource.Client) ? JsonRpcSource.Server : JsonRpcSource.Client, SocketError.Success);
 
 			} else if (method == "rpc." + nameof(OnAuthenticationFailure)) {
@@ -487,7 +554,7 @@ namespace DtronixJsonRpc {
 				if (Mode == JsonRpcSource.Client) {
 					logger.Debug("{0} CID {1}: Failed authentication", Mode, Info.Id);
 
-					var reason = data.ToObject<JsonRpcParam<string>>().Args;
+					var reason = data["params"].ToObject<string>();
 					OnAuthenticationFailure?.Invoke(this, new AuthenticationFailureEventArgs(reason));
 				}
 
@@ -506,20 +573,20 @@ namespace DtronixJsonRpc {
 				if (Mode == JsonRpcSource.Server) {
 					ping_stopwatch.Stop();
 					Ping = ping_stopwatch.ElapsedMilliseconds;
-					Send(new JsonRpcParam<long>("rpc.ping-result", Ping));
+					Send(new JsonRpcParam("rpc.ping-result", Ping));
 
 					logger.Trace("{0} CID {1}: Ping {2}ms", Mode, Info.Id, Ping);
 
 				} else {
 					// Ping back immediately to the server.
-					Send(new JsonRpcParam<JsonRpcSource>("rpc.ping", Mode));
+					Send(new JsonRpcParam("rpc.ping", Mode));
 				}
 
 			} else if (method == "rpc.ping-result") {
 
 				// Method called on the client to update the latency value from the server.
 				if (Mode == JsonRpcSource.Client) {
-					Ping = data.ToObject<JsonRpcParam<long>>().Args;
+					Ping = data["params"].ToObject<long>();
 				}
 
 			} else {
@@ -576,9 +643,9 @@ namespace DtronixJsonRpc {
 		/// Sends data to the stream with the specified transport protocol.
 		/// </summary>
 		/// <typeparam name="T">Data type that will be sent.</typeparam>
-		/// <param name="args">Data to send over the stream.</param>
+		/// <param name="parameters">Data to send over the stream.</param>
 		/// <param name="force_send">Set to true to ignore connection status. Otherwise, will throw if data is sent over a connecting connection.</param>
-		internal void Send<T>(JsonRpcParam<T> args, bool force_send = false) {
+		internal void Send(JsonRpcParam parameters, bool force_send = false) {
 
 			// Prevent data from being sent when the client has been requested to stop.
 			if (cancellation_token_source.IsCancellationRequested) {
@@ -596,14 +663,27 @@ namespace DtronixJsonRpc {
 			}
 
 			// MAJOR Performance Hit.
-			logger.Trace("{0} CID {1}: Write line to stream: {2}", Mode, Info.Id, JsonConvert.SerializeObject(args));
+			logger.Trace("{0} CID {1}: Write line to stream: {2}", Mode, Info.Id, JsonConvert.SerializeObject(parameters));
+
+
+			// Add the reset event if the arguments have an ID.
+			if (parameters.Id != null) {
+				logger.Trace("{0} CID {1}: Waiting on request result for request ID '{2}'.", Mode, Info.Id, parameters.Id);
+
+
+				var result_instance = new ReturnResult() { reset_event = new ManualResetEventSlim() };
+				// Add it to the list
+				if (return_wait_results.TryAdd(parameters.Id, result_instance) == false) {
+					logger.Fatal("{0} CID {1}: Could not add wait request for request ID '{2}'.", Mode, Info.Id, parameters.Id);
+				}
+			}
 
 			try {
 				// Lock the stream so that only one writer can execute at a time.
 				lock (write_lock) {
 
 					// Write the data to the stream with the specified transport protocol.
-					serializer.Serialize(writer, args);
+					serializer.Serialize(writer, parameters);
 					writer.Flush();
 				}
 
@@ -661,7 +741,7 @@ namespace DtronixJsonRpc {
 
 			// If we are disconnecting, let the other party know.
 			if (Mode == source && client.Client.Connected) {
-				Send(new JsonRpcParam<ClientInfo[]>("rpc." + nameof(OnDisconnect), new ClientInfo[] { Info }));
+				Send(new JsonRpcParam("rpc." + nameof(OnDisconnect), new ClientInfo[] { Info }));
 			}
 
 			// Invoke the disconnect event.

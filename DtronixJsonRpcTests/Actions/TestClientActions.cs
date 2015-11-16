@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DtronixJsonRpcTests {
+namespace DtronixJsonRpcTests.Actions {
 	public class TestClientActions : JsonRpcActions<TestActionHandler> {
 
 		new public JsonRpcClient<TestActionHandler> Connector { get { return base.Connector; } }
@@ -21,9 +21,9 @@ namespace DtronixJsonRpcTests {
 			public long RandomLong { get; set; }
 		}
 
-		[ActionMethod(JsonRpcSource.Client)]
+		/*[ActionMethod(JsonRpcSource.Client)]
 		public void Test(TestArgs args, bool received = false) {
-			if (SendAndReceived(args, received)) {
+			if (ReturnRemote(args, received)) {
 				//((BaseTest)Connector.DataObject).
 				//MethodCalled?.Invoke(this, new TestClientMethodCalledEventArgs<object>(args, GetType()));
 			}
@@ -32,19 +32,18 @@ namespace DtronixJsonRpcTests {
 
 		[ActionMethod(JsonRpcSource.Client)]
 		public void Noop(TestArgs args, bool received = false) {
-			if (SendAndReceived(args, received)) {
+			if (ReturnRemote(args, received)) {
 			}
-
 		}
 
 
 
 		[ActionMethod(JsonRpcSource.Client)]
 		public void Test2(TestArgs args, bool received = false) {
-			if (SendAndReceived(args, received)) {
+			if (ReturnRemote(args, received)) {
 				//MethodCalled?.Invoke(this, new TestClientMethodCalledEventArgs<object>(args, GetType()));
 			}
 
-		}
+		}*/
 	}
 }

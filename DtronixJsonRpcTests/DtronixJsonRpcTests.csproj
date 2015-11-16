@@ -73,10 +73,12 @@
     <Otherwise />
   </Choose>
   <ItemGroup>
+    <Compile Include="Actions\TestServerActions.cs" />
+    <Compile Include="JsonRpcClientIntegrationTests.cs" />
     <Compile Include="JsonRpcClientTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="TestActionHandler.cs" />
-    <Compile Include="TestClientActions.cs" />
+    <Compile Include="Actions\TestActionHandler.cs" />
+    <Compile Include="Actions\TestClientActions.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

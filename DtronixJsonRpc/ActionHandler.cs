@@ -4,6 +4,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace DtronixJsonRpc {
 	public class ActionHandler<THandler>
@@ -34,7 +35,7 @@ namespace DtronixJsonRpc {
 
 
 
-		public void ExecuteAction(string method, JToken data) {
+		public void ExecuteAction(string method, JToken data, string id) {
 			CalledMethodInfo called_method_info;
 			object instance_class;
 
@@ -94,7 +95,16 @@ namespace DtronixJsonRpc {
 			}
 
 			try {
-				called_method_info.method_info.Invoke(instance_class, new object[] { data["args"].ToObject(parameter_type), true });
+				// Invoke the method and see if we have a return value.
+				object result = called_method_info.method_info.Invoke(instance_class, new object[] { data["params"].ToObject(parameter_type), id });
+
+				// If the method return value was not void, then send the result back to the other party.
+				if(called_method_info.method_info.ReturnType != typeof(void)) {
+					Connector.Send(new JsonRpcParam() {
+						Result = ((dynamic)result).Result,
+						Id = id
+					});
+				}
 
 			} catch (Exception e) {
 				throw e;

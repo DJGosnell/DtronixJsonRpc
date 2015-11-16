@@ -1,4 +1,5 @@
 ﻿using DtronixJsonRpc;
+using DtronixJsonRpcTests.Actions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Bson;
 using Newtonsoft.Json.Linq;
@@ -39,7 +40,7 @@ namespace DtronixJsonRpcTests {
 			server = TcpListener.Create(Interlocked.Increment(ref port));
 			server.Start();
 
-
+			
 
 			client = JsonRpcClient<TestActionHandler>.CreateClient("localhost", ((IPEndPoint)server.LocalEndpoint).Port, JsonRpcServerConfigurations.TransportMode.Bson);
 
@@ -57,7 +58,7 @@ namespace DtronixJsonRpcTests {
 
 			server_task = new Task(() => {
 				CreateServerClient(AUTH_TEXT);
-				Send(new JsonRpcParam<TestClientActions.TestArgs>("TestClientActions.Noop", new TestClientActions.TestArgs() { RandomLong = 25166213 }));
+				Send(new JsonRpcParam("TestClientActions.Noop", new TestClientActions.TestArgs() { RandomLong = 25166213 }));
 				var wait = new ManualResetEvent(false);
 
 				client.OnDataReceived += (sender, e) => {
@@ -87,7 +88,7 @@ namespace DtronixJsonRpcTests {
 
 			server_task = new Task(() => {
 				CreateServerClient(AUTH_TEXT);
-				Send(new JsonRpcParam<TestClientActions.TestArgs>("InvalidMethod", new TestClientActions.TestArgs() { RandomLong = 25166213 }));
+				Send(new JsonRpcParam("InvalidMethod", new TestClientActions.TestArgs() { RandomLong = 25166213 }));
 				//Send(new JsonRpcParam<string>("TestMethod", "This is my custom value"));
 				var wait = new ManualResetEvent(false);
 
@@ -117,7 +118,7 @@ namespace DtronixJsonRpcTests {
 			server_task = new Task(() => {
 				CreateServerClient(AUTH_TEXT);
 
-				client.Send(new JsonRpcParam<string>("TestMethod", "This is my custom value"));
+				client.Send(new JsonRpcParam("TestMethod", "This is my custom value"));
 
 				var data = Read();
 
@@ -186,7 +187,7 @@ namespace DtronixJsonRpcTests {
 			return JToken.ReadFrom(reader);
 		}
 
-		private void Send<T>(JsonRpcParam<T> args) {
+		private void Send(JsonRpcParam args) {
 			serializer.Serialize(writer, args);
 			writer.Flush();
 		}
@@ -201,15 +202,15 @@ namespace DtronixJsonRpcTests {
 			reader.SupportMultipleContent = true;
 
 			if(auth_string != null) {
-				var client_info = Read().ToObject<JsonRpcParam<ClientInfo>>();
-				Send(new JsonRpcParam<int>(null, 1));
-				var authentication_text = Read().ToObject<JsonRpcParam<string>>();
+				var client_info = Read()["params"].ToObject<ClientInfo[]>();
+				Send(new JsonRpcParam(null, 1));
+				var authentication_text = Read()["params"].ToObject<string>();
 
-				if (auth_string == authentication_text.Args) {
-					Send(new JsonRpcParam<string>("rpc.OnAuthenticationSuccess"));
+				if (auth_string == authentication_text) {
+					Send(new JsonRpcParam("rpc.OnAuthenticationSuccess"));
 					return true;
 				} else {
-					Send(new JsonRpcParam<string>("rpc.OnAuthenticationFailure", "Failed Validation"));
+					Send(new JsonRpcParam("rpc.OnAuthenticationFailure", "Failed Validation"));
 					return false;
 				}
 			}
@@ -218,7 +219,7 @@ namespace DtronixJsonRpcTests {
 		}
 
 		private void DisconnectClient() {
-			Send(new JsonRpcParam<ClientInfo[]>("rpc.OnDisconnect", new ClientInfo[] { new ClientInfo() {
+			Send(new JsonRpcParam("rpc.OnDisconnect", new ClientInfo[] { new ClientInfo() {
 				DisconnectReason = "Test completed"
 			}}));
 			server_client.Close();
