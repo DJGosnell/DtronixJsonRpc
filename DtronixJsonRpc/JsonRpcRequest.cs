@@ -53,8 +53,6 @@ namespace DtronixJsonRpc {
 		[JsonProperty("params")]
 		public object Params { get; set; }
 
-		public event PropertyChangedEventHandler PropertyChanged;
-
 		public JsonRpcRequest() {
 
 		}
