@@ -54,7 +54,8 @@
     <Compile Include="ClientStatus.cs" />
     <Compile Include="ConnectedClientChangedEventArgs.cs" />
     <Compile Include="ConnectorAuthenticationEventArgs.cs" />
-    <Compile Include="JsonRpcParam.cs" />
+    <Compile Include="JsonRpcError.cs" />
+    <Compile Include="JsonRpcRequest.cs" />
     <Compile Include="ActionMethodAttribute.cs" />
     <Compile Include="JsonRpcActions.cs" />
     <Compile Include="ClientInfo.cs" />

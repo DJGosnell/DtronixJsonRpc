@@ -24,7 +24,7 @@ namespace DtronixJsonRpc {
 
 		private class ReturnResult {
 			public ManualResetEventSlim reset_event;
-			public JToken result;
+			public JToken value;
 		}
 
 		private static Logger logger = LogManager.GetCurrentClassLogger();
@@ -205,6 +205,12 @@ namespace DtronixJsonRpc {
 			return Interlocked.Increment(ref _RequestId).ToString();
 		}
 
+		/// <summary>
+		/// Asynchronously waits for the result of the specified ID.  Can only have one wait per ID.
+		/// </summary>
+		/// <typeparam name="T">Type to return the result as.</typeparam>
+		/// <param name="id">ID of the request to wait on.</param>
+		/// <returns>Result of the request.</returns>
 		public async Task<T> WaitForResult<T>(string id) {
 			ReturnResult result;
 			try {
@@ -220,9 +226,9 @@ namespace DtronixJsonRpc {
 
 				logger.Trace("{0} CID {1}: Result received for request ID '{2}'.", Mode, Info.Id, id);
 
-				return result.result["result"].ToObject<T>();
+				return result.value["result"].ToObject<T>();
 			} finally {
-				if (return_wait_results.TryRemove(id, out result)) {
+				if (return_wait_results.TryRemove(id, out result) == false) {
 					logger.Fatal("{0} CID {1}: Could not remove the wait for request ID '{2}'.", Mode, Info.Id, id);
 				}
 			}
@@ -475,7 +481,7 @@ namespace DtronixJsonRpc {
 					if (id != null && return_wait_results.Count != 0) {
 						ReturnResult return_result;
 						if (return_wait_results.TryGetValue(id, out return_result)) {
-							return_result.result = data;
+							return_result.value = data;
 
 							// Let the other thread know it is OK to continue.
 							return_result.reset_event.Set();
@@ -644,8 +650,17 @@ namespace DtronixJsonRpc {
 		/// </summary>
 		/// <typeparam name="T">Data type that will be sent.</typeparam>
 		/// <param name="parameters">Data to send over the stream.</param>
+		public void Send(JsonRpcRequest parameters) {
+			Send(parameters, false);
+		}
+
+		/// <summary>
+		/// Sends data to the stream with the specified transport protocol.
+		/// </summary>
+		/// <typeparam name="T">Data type that will be sent.</typeparam>
+		/// <param name="parameters">Data to send over the stream.</param>
 		/// <param name="force_send">Set to true to ignore connection status. Otherwise, will throw if data is sent over a connecting connection.</param>
-		public void Send(JsonRpcRequest parameters, bool force_send = false) {
+		private void Send(JsonRpcRequest parameters, bool force_send = false) {
 
 			// Prevent data from being sent when the client has been requested to stop.
 			if (cancellation_token_source.IsCancellationRequested) {
@@ -722,7 +737,7 @@ namespace DtronixJsonRpc {
 		/// <param name="reason">Reason this client is disconnecting.</param>
 		/// <param name="source">Source of this disconnect request</param>
 		/// <param name="socket_error"></param>
-		public void Disconnect(string reason, JsonRpcSource source, SocketError socket_error) {
+		private void Disconnect(string reason, JsonRpcSource source, SocketError socket_error) {
 			if (string.IsNullOrWhiteSpace(reason)) {
 				throw new ArgumentException("Reason for closing connection can not be null or empty.");
 			}
