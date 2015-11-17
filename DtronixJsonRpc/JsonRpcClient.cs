@@ -518,7 +518,9 @@ namespace DtronixJsonRpc {
 					}
 				}
 			} catch (SocketException e) {
-				Disconnect("Server connection issues", JsonRpcSource.Client, e.SocketErrorCode);
+				if (Info.Status.HasFlag(ClientStatus.Connected)) {
+					Disconnect("Server connection issues", JsonRpcSource.Client, e.SocketErrorCode);
+				}
 
 			} catch (Exception e) {
 				logger.Error(e, "{0} CID {1}: Exception Occurred: {2}", Mode, Info.Id, e.ToString());
@@ -552,7 +554,9 @@ namespace DtronixJsonRpc {
 
 				// Method called when disconnected by the other end of the connection.
 				var clients_info = data["params"].ToObject<ClientInfo[]>();
-				Disconnect(clients_info[0].DisconnectReason, (Mode == JsonRpcSource.Client) ? JsonRpcSource.Server : JsonRpcSource.Client, SocketError.Success);
+				if (Info.Status.HasFlag(ClientStatus.Connected)) {
+					Disconnect(clients_info[0].DisconnectReason, (Mode == JsonRpcSource.Client) ? JsonRpcSource.Server : JsonRpcSource.Client, SocketError.Success);
+				}
 
 			} else if (method == "rpc." + nameof(OnAuthenticationFailure)) {
 
@@ -596,7 +600,9 @@ namespace DtronixJsonRpc {
 				}
 
 			} else {
-				Disconnect("Tired to call invalid method. Check client version.");
+				if (Info.Status.HasFlag(ClientStatus.Connected)) {
+					Disconnect("Tired to call invalid method. Check client version.");
+				}
 			}
 
 		}
@@ -620,23 +626,31 @@ namespace DtronixJsonRpc {
 
 			} catch (SocketException e) {
 				logger.Warn(e, "{0} CID {1}: Socket Exception occurred while listening. Exception: {2}", Mode, Info.Id, e.InnerException.ToString());
-				Disconnect("Connection closed");
+				if (Info.Status.HasFlag(ClientStatus.Connected)) {
+					Disconnect("Connection closed");
+				}
 				return null;
 
 			} catch (IOException e) {
 
 				logger.Warn(e, "{0} CID {1}: IO Exception occurred while listening. Exception: {2}", Mode, Info.Id, e.InnerException.ToString());
-				Disconnect("Connection closed");
+				if (Info.Status.HasFlag(ClientStatus.Connected)) {
+					Disconnect("Connection closed");
+				}
 				return null;
 
 			} catch (JsonReaderException e) {
 				logger.Warn(e, "{0} CID {1}: JSON parsing Exception occurred. Exception: {2}", Mode, Info.Id, e.ToString());
-				Disconnect("Connection closed");
+				if (Info.Status.HasFlag(ClientStatus.Connected)) {
+					Disconnect("Connection closed");
+				}
 				return null;
 
 			} catch (Exception e) {
 				logger.Error(e, "{0} CID {1}: Unknown exception occurred while listening. Exception: {2}", Mode, Info.Id, e.ToString());
-				Disconnect("Connection closed");
+				if (Info.Status.HasFlag(ClientStatus.Connected)) {
+					Disconnect("Connection closed");
+				}
 				return null;
 			}
 
@@ -706,7 +720,10 @@ namespace DtronixJsonRpc {
 				if (client.Client.Connected) {
 					logger.Error(e, "{0} CID {1}: Exception occurred when trying to write to the stream. Exception: {2}", Mode, Info.Id, e.ToString());
 				}
-				Disconnect("Writing error to stream.");
+
+				if (Info.Status.HasFlag(ClientStatus.Connected)) {
+					Disconnect("Writing error to stream.");
+				}
 
 			} catch (ObjectDisposedException e) {
 				logger.Warn("{0} CID {1}: Tried to write to the stream when the client was closed.", Mode, Info.Id);

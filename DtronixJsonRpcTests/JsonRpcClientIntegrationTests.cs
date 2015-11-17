@@ -95,7 +95,6 @@ namespace DtronixJsonRpcTests {
 					client.Disconnect("Test failed to complete within the time limitation.");
 					return false;
 				}
-				client.Disconnect("Test completed.");
 			} finally {
 				server_task.Exception?.Handle(ex => {
 					throw ex;
