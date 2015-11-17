@@ -53,7 +53,7 @@ namespace DtronixJsonRpcTests {
 
 		[Fact]
 		public async void TestReturnTrue_multiple_calls_succeed() {
-			var iterations = 1000;
+			var iterations = 100;
 
 			server_task = new Task(() => {
 				server.Start();
@@ -77,7 +77,7 @@ namespace DtronixJsonRpcTests {
 
 					sw.Stop();
 
-					output.WriteLine($"{sw.ElapsedMilliseconds} to complete the iterations. {iterations / (sw.ElapsedMilliseconds / 1000d)} Calls per second.");
+					output.WriteLine($"{sw.ElapsedMilliseconds}ms to complete the iterations. {iterations / (sw.ElapsedMilliseconds / 1000d)} Calls per second.");
 
 					server.Stop("Test completed");
 
