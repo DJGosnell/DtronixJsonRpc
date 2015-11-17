@@ -13,7 +13,7 @@ namespace DtronixJsonRpc {
 			reference_name = member_name;
 		}
 
-		protected bool RequestResult<T>(T args, ref string id, [CallerMemberName] string member_name = "") {
+		protected bool RequestResult(object args, ref string id, [CallerMemberName] string member_name = "") {
 			if (id == null) {
 				id = Connector.GetNewRequestId();
 				Connector.Send(new JsonRpcRequest(reference_name + "." + member_name, args, id));
@@ -23,7 +23,7 @@ namespace DtronixJsonRpc {
 			}
 		}
 
-		protected bool Notify<T>(T args, ref string id, [CallerMemberName] string member_name = "") {
+		protected bool Notify(object args, ref string id, [CallerMemberName] string member_name = "") {
 			if (id == null) {
 				Connector.Send(new JsonRpcRequest(reference_name + "." + member_name, args));
 				return false;

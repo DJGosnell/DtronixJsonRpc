@@ -95,11 +95,25 @@ namespace DtronixJsonRpc {
 			}
 
 			try {
+				// Determine what kind of parameters we have.
+				object[] parameters;
+				if (called_method_info.parameter_info.Length == 1) {
+					// If there is only one parameter, then it is the call ID.
+					parameters = new object[] { id };
+
+				} else if (called_method_info.parameter_info.Length == 2) {
+					// Two parameters means the parameters and the call ID.
+					parameters = new object[] { data["params"].ToObject(parameter_type), id };
+
+				} else {
+					throw new InvalidOperationException("Did not pass the minimum number of parameters.");
+				}
+
 				// Invoke the method and see if we have a return value.
-				object result = called_method_info.method_info.Invoke(instance_class, new object[] { data["params"].ToObject(parameter_type), id });
+				object result = called_method_info.method_info.Invoke(instance_class, parameters);
 
 				// If the method return value was not void, then send the result back to the other party.
-				if(called_method_info.method_info.ReturnType != typeof(void)) {
+				if (called_method_info.method_info.ReturnType != typeof(void)) {
 					Connector.Send(new JsonRpcRequest() {
 						Result = ((dynamic)result).Result,
 						Id = id

@@ -149,6 +149,32 @@ namespace DtronixJsonRpcTests {
 		}
 
 		[Fact]
+		public async void ReturnTrueWithoutParams_call_returns_true() {
+			server_task = new Task(() => {
+				server.Start();
+			});
+
+			client_task = new Task(() => {
+
+				client.OnConnect += async (sender, e) => {
+					var result = await client.Actions.TestServerActions.ReturnTrueWithoutParams();
+
+					Assert.True(result);
+
+					server.Stop("Test completed");
+
+				};
+
+				client.Connect();
+			});
+
+
+
+			await StartAndWaitClient();
+
+		}
+
+		[Fact]
 		public async void Notify_call_sends_to_server() {
 			server_task = new Task(() => {
 				server.OnClientConnect += (sender, e) => {

@@ -40,6 +40,15 @@ namespace DtronixJsonRpcTests.Actions {
 		}
 
 		[ActionMethod(JsonRpcSource.Server)]
+		public async Task<bool> ReturnTrueWithoutParams(string id = null) {
+			if (RequestResult(null, ref id)) { return await Connector.WaitForResult<bool>(id); }
+
+			return true;
+
+
+		}
+
+		[ActionMethod(JsonRpcSource.Server)]
 		public void NotifyServer(TestArgs args, string id = null) {
 			if (Notify(args, ref id)) {
 				// Do stuff
