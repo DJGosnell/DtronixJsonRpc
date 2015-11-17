@@ -52,7 +52,7 @@ namespace DtronixJsonRpcTests {
 		}
 
 		[Fact]
-		public async void TestReturnTrue_multiple_calls_succeed() {
+		public async void ReturnTrue_multiple_calls_succeed() {
 			var iterations = 100;
 
 			server_task = new Task(() => {
@@ -63,13 +63,13 @@ namespace DtronixJsonRpcTests {
 
 				client.OnConnect += async (sender, e) => {
 					// First call to clear the way.
-					await client.Actions.TestServerActions.TestReturnTrue(new TestServerActions.TestArgs() {
+					await client.Actions.TestServerActions.ReturnTrue(new TestServerActions.TestArgs() {
 						RandomLong = 2395715
 					});
 
 					var sw = System.Diagnostics.Stopwatch.StartNew();
 					for (int i = 0; i < iterations; i++) {
-						var result = await client.Actions.TestServerActions.TestReturnTrue(new TestServerActions.TestArgs() {
+						var result = await client.Actions.TestServerActions.ReturnTrue(new TestServerActions.TestArgs() {
 							RandomLong = 2395715
 						});
 						Assert.True(result);
@@ -93,7 +93,7 @@ namespace DtronixJsonRpcTests {
 		}
 
 		[Fact]
-		public async void TestReturnTrue_call_returns_true() {
+		public async void ReturnTrue_call_returns_true() {
 			server_task = new Task(() => {
 				server.Start();
 			});
@@ -101,7 +101,7 @@ namespace DtronixJsonRpcTests {
 			client_task = new Task(() => {
 
 				client.OnConnect += async (sender, e) => {
-					var result = await client.Actions.TestServerActions.TestReturnTrue(new TestServerActions.TestArgs() {
+					var result = await client.Actions.TestServerActions.ReturnTrue(new TestServerActions.TestArgs() {
 						RandomLong = 2395715
 					});
 
@@ -121,7 +121,7 @@ namespace DtronixJsonRpcTests {
 		}
 
 		[Fact]
-		public async void TestReturnTrue_call_returns_false() {
+		public async void ReturnFalse_call_returns_false() {
 			server_task = new Task(() => {
 				server.Start();
 			});
@@ -129,13 +129,46 @@ namespace DtronixJsonRpcTests {
 			client_task = new Task(() => {
 
 				client.OnConnect += async (sender, e) => {
-					var result = await client.Actions.TestServerActions.TestReturnFalse(new TestServerActions.TestArgs() {
+					var result = await client.Actions.TestServerActions.ReturnFalse(new TestServerActions.TestArgs() {
 						RandomLong = 2395715
 					});
 
 					Assert.False(result);
 
 					server.Stop("Test completed");
+
+				};
+
+				client.Connect();
+			});
+
+
+
+			await StartAndWaitClient();
+
+		}
+
+		[Fact]
+		public async void Notify_call_sends_to_server() {
+			server_task = new Task(() => {
+				server.OnClientConnect += (sender, e) => {
+
+					e.Client.OnDataReceived += (sender2, e2) => {
+						if (e2.Data["method"].ToString() == "TestServerActions.NotifyServer") {
+							server.Stop("Test completed");
+						}
+					};
+				};
+
+				server.Start();
+			});
+
+			client_task = new Task(() => {
+
+				client.OnConnect += (sender, e) => {
+					client.Actions.TestServerActions.NotifyServer(new TestServerActions.TestArgs() {
+						RandomLong = 2395715
+					});
 
 				};
 

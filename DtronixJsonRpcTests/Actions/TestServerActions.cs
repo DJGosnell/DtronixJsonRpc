@@ -22,8 +22,8 @@ namespace DtronixJsonRpcTests.Actions {
 		}
 
 		[ActionMethod(JsonRpcSource.Server)]
-		public async Task<bool> TestReturnTrue(TestArgs args, string id = null) {
-			if (SendAndReturnResult(args, ref id)) { return await Connector.WaitForResult<bool>(id); }
+		public async Task<bool> ReturnTrue(TestArgs args, string id = null) {
+			if (RequestResult(args, ref id)) { return await Connector.WaitForResult<bool>(id); }
 
 			return true;
 
@@ -31,11 +31,20 @@ namespace DtronixJsonRpcTests.Actions {
 		}
 
 		[ActionMethod(JsonRpcSource.Server)]
-		public async Task<bool> TestReturnFalse(TestArgs args, string id = null) {
-			if (SendAndReturnResult(args, ref id)) { return await Connector.WaitForResult<bool>(id); }
+		public async Task<bool> ReturnFalse(TestArgs args, string id = null) {
+			if (RequestResult(args, ref id)) { return await Connector.WaitForResult<bool>(id); }
 
 			return false;
 
+
+		}
+
+		[ActionMethod(JsonRpcSource.Server)]
+		public void NotifyServer(TestArgs args, string id = null) {
+			if (Notify(args, ref id)) {
+				// Do stuff
+
+			}
 
 		}
 
