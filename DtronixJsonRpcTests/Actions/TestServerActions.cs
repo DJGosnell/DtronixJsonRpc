@@ -30,5 +30,14 @@ namespace DtronixJsonRpcTests.Actions {
 
 		}
 
+		[ActionMethod(JsonRpcSource.Server)]
+		public async Task<bool> TestReturnFalse(TestArgs args, string id = null) {
+			if (SendAndReturnResult(args, ref id)) { return await Connector.WaitForResult<bool>(id); }
+
+			return false;
+
+
+		}
+
 	}
 }

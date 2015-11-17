@@ -40,7 +40,7 @@ namespace DtronixJsonRpcTests {
 			server = TcpListener.Create(Interlocked.Increment(ref port));
 			server.Start();
 
-			
+
 
 			client = JsonRpcClient<TestActionHandler>.CreateClient("localhost", ((IPEndPoint)server.LocalEndpoint).Port, JsonRpcServerConfigurations.TransportMode.Bson);
 
@@ -64,7 +64,7 @@ namespace DtronixJsonRpcTests {
 				client.OnDataReceived += (sender, e) => {
 					if (e.Data?["method"].ToString().StartsWith("rpc.") == false) {
 						Assert.Equal("TestClientActions.Noop", e.Data["method"]);
-						Assert.Equal(25166213, e.Data["args"].Value<long>("RandomLong"));
+						Assert.Equal(25166213, e.Data["params"].Value<long>("RandomLong"));
 
 						DisconnectClient();
 						wait.Set();
@@ -82,7 +82,7 @@ namespace DtronixJsonRpcTests {
 			await StartAndWaitClient();
 		}
 
-	
+
 		[Fact]
 		public async void Read_should_throw_on_invalid_method() {
 
@@ -123,7 +123,7 @@ namespace DtronixJsonRpcTests {
 				var data = Read();
 
 				Assert.Equal("TestMethod", data["method"]);
-				Assert.Equal("This is my custom value", data["args"]);
+				Assert.Equal("This is my custom value", data["params"]);
 
 				DisconnectClient();
 
@@ -156,7 +156,7 @@ namespace DtronixJsonRpcTests {
 
 			server_task = new Task(() => {
 				CreateServerClient(AUTH_TEXT);
-				
+
 				DisconnectClient();
 
 			});
@@ -201,8 +201,8 @@ namespace DtronixJsonRpcTests {
 			writer.Formatting = Formatting.None;
 			reader.SupportMultipleContent = true;
 
-			if(auth_string != null) {
-				var client_info = Read()["params"].ToObject<ClientInfo[]>();
+			if (auth_string != null) {
+				var client_info = Read()["params"].ToObject<ClientInfo>();
 				Send(new JsonRpcRequest(null, 1));
 				var authentication_text = Read()["params"].ToObject<string>();
 

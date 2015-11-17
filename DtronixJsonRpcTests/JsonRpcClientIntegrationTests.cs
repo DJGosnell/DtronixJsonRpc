@@ -22,10 +22,6 @@ namespace DtronixJsonRpcTests {
 
 		private JsonRpcServer<TestActionHandler> server;
 		private JsonRpcClient<TestActionHandler> client;
-		private TcpClient server_client;
-		private NetworkStream server_client_stream;
-		private BsonWriter writer;
-		private BsonReader reader;
 		private JsonSerializer serializer = new JsonSerializer();
 		private Task server_task;
 		private Task client_task;
@@ -55,10 +51,49 @@ namespace DtronixJsonRpcTests {
 			};
 		}
 
+		[Fact]
+		public async void TestReturnTrue_multiple_calls_succeed() {
+			var iterations = 1000;
 
+			server_task = new Task(() => {
+				server.Start();
+			});
+
+			client_task = new Task(() => {
+
+				client.OnConnect += async (sender, e) => {
+					// First call to clear the way.
+					await client.Actions.TestServerActions.TestReturnTrue(new TestServerActions.TestArgs() {
+						RandomLong = 2395715
+					});
+
+					var sw = System.Diagnostics.Stopwatch.StartNew();
+					for (int i = 0; i < iterations; i++) {
+						var result = await client.Actions.TestServerActions.TestReturnTrue(new TestServerActions.TestArgs() {
+							RandomLong = 2395715
+						});
+						Assert.True(result);
+					}
+
+					sw.Stop();
+
+					output.WriteLine($"{sw.ElapsedMilliseconds} to complete the iterations. {iterations / (sw.ElapsedMilliseconds / 1000d)} Calls per second.");
+
+					server.Stop("Test completed");
+
+				};
+
+				client.Connect();
+			});
+
+
+
+			await StartAndWaitClient();
+
+		}
 
 		[Fact]
-		public async void method_call_return_value() {
+		public async void TestReturnTrue_call_returns_true() {
 			server_task = new Task(() => {
 				server.Start();
 			});
@@ -71,6 +106,34 @@ namespace DtronixJsonRpcTests {
 					});
 
 					Assert.True(result);
+
+					server.Stop("Test completed");
+
+				};
+
+				client.Connect();
+			});
+
+
+
+			await StartAndWaitClient();
+
+		}
+
+		[Fact]
+		public async void TestReturnTrue_call_returns_false() {
+			server_task = new Task(() => {
+				server.Start();
+			});
+
+			client_task = new Task(() => {
+
+				client.OnConnect += async (sender, e) => {
+					var result = await client.Actions.TestServerActions.TestReturnFalse(new TestServerActions.TestArgs() {
+						RandomLong = 2395715
+					});
+
+					Assert.False(result);
 
 					server.Stop("Test completed");
 
