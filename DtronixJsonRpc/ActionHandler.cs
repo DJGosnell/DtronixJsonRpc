@@ -7,6 +7,21 @@ using System.Reflection;
 using System.Threading.Tasks;
 
 namespace DtronixJsonRpc {
+
+	/// <summary>
+	/// Base class for all action handlers.
+	/// </summary>
+	/// <typeparam name="THandler">The inherited class of this base ActionHandler.</typeparam>
+	/// <example>
+	/// public class YourActionHandler : ActionHandler&lt;TestActionHandler&gt; {
+	///		private YourClientActions _YourClientActions = null;
+	///		public YourClientActions YourClientActions {
+	///			get {
+	///				return _YourClientActions ?? (_YourClientActions = new YourClientActions(Connector));
+	///			}
+	///		}
+	/// }
+	/// </example>
 	public class ActionHandler<THandler>
 		where THandler : ActionHandler<THandler>, new() {
 
@@ -19,14 +34,6 @@ namespace DtronixJsonRpc {
 		}
 
 		public JsonRpcClient<THandler> Connector { get; set; }
-
-		/*private Dictionary<string, JsonRpcActions<IActionHandler>> loaded_actions = new Dictionary<string, JsonRpcActions<IActionHandler>>();
-
-		public void AddActions(string name, JsonRpcActions<IActionHandler> actions) {
-			loaded_actions.Add( actions)
-		}*/
-
-
 
 		private static ConcurrentDictionary<string, CalledMethodInfo> called_method_cache = new ConcurrentDictionary<string, CalledMethodInfo>();
 		private static object method_cache_lock = new object();

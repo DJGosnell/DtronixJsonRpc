@@ -7,6 +7,11 @@ namespace DtronixJsonRpc {
 		/// <summary>
 		/// Name of the property that this action set is instanced on.
 		/// </summary>
+		/// <example>
+		/// public class YourClientActions : JsonRpcActions&lt;YourActionHandler&gt; {
+		///		// Action methods.
+		/// }
+		/// </example>
 		private string reference_name;
 
 		/// <summary>
@@ -60,7 +65,7 @@ namespace DtronixJsonRpc {
 		/// <param name="member_name">Name of this method.  Do not set unless you are doing something fancy.</param>
 		/// <returns>True if code is executing on other client.</returns>
 		/// <example>
-		/// [ActionMethod(JsonRpcSource.Server)]
+		/// [ActionMethod(JsonRpcSource.Client)]
 		/// public void NotifyServer(TestArgs args, string id = null) {
 		/// 	if (Notify(args, ref id)) {
 		///			// Code executed on other client.

@@ -43,10 +43,25 @@ namespace DtronixJsonRpc {
 		/// </summary>
 		public TransportMode TransportProtocol { get; set; } = TransportMode.Bson;
 
+		/// <summary>
+		/// Set to true to automatically ping all clients when connected to ensure they are still connected.
+		/// 
+		/// Default: true.
+		/// </summary>
 		public bool PingClients { get; set; } = true;
 
+		/// <summary>
+		/// Number of milliseconds between client pings.
+		/// 
+		/// Default: 5 seconds.
+		/// </summary>
 		public int PingFrequency { get; set; } = 5000;
 
+		/// <summary>
+		/// If the ping time exceeds the specified number of milliseconds, the client will be automatically disconnected.
+		/// 
+		/// Default: 15 seconds.
+		/// </summary>
 		public int PingTimeoutDisconnectTime { get; set; } = 15 * 1000;
 
 

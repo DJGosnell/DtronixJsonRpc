@@ -1,11 +1,19 @@
 ﻿using System;
 
 namespace DtronixJsonRpc {
-	[System.AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = true)]
+	/// <summary>
+	/// Attribute to define where this action should be executed. Must be set on all callable actions.
+	/// </summary>
+	[System.AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
 	public class ActionMethodAttribute : Attribute {
 
+		/// <summary>
+		/// Location this action is to be called.
+		/// Location this method should be called. Set to "unset" to allow method to be called on both client and server.
+		/// </summary>
 		public JsonRpcSource Source { get; }
-		// This is a positional argument
+
+
 		/// <summary>
 		/// Sets whether or not this is an actions that a JsonRpcConnector can call or not.
 		/// </summary>
