@@ -25,7 +25,7 @@ namespace DtronixJsonRpcTests.Actions {
 		public async Task<bool> TestReturnTrue(TestArgs args, string id = null) {
 			if (SendAndReturnResult(args, ref id)) { return await Connector.WaitForResult<bool>(id); }
 
-			return false;
+			return true;
 
 
 		}

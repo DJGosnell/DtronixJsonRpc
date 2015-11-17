@@ -72,6 +72,8 @@ namespace DtronixJsonRpcTests {
 
 					Assert.True(result);
 
+					server.Stop("Test completed");
+
 				};
 
 				client.Connect();

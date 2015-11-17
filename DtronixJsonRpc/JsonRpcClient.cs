@@ -748,10 +748,11 @@ namespace DtronixJsonRpc {
 			if (Info.Status == ClientStatus.Disconnecting) {
 				logger.Debug("{0} CID {1}: Stop requested but client is already in the process of stopping.", Mode, Info.Id);
 				return;
+			} else {
+				// Set the current status
+				Info.Status = ClientStatus.Disconnecting;
 			}
 
-			// Set the current status
-			Info.Status = ClientStatus.Disconnecting;
 			Info.DisconnectReason = reason;
 
 			// If we are disconnecting, let the other party know.
@@ -761,6 +762,7 @@ namespace DtronixJsonRpc {
 
 			// Invoke the disconnect event.
 			OnDisconnect?.Invoke(this, new ClientDisconnectEventArgs<THandler>(reason, source, Server, this, socket_error));
+			OnDisconnect = null;
 			cancellation_token_source?.Cancel();
 
 
