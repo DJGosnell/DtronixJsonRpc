@@ -54,7 +54,7 @@ namespace DtronixJsonRpc {
 				var type_property = this_type.GetProperty(call_parts[0]);
 
 				if (type_property == null) {
-					throw new InvalidOperationException("Method requested by the server does not exist.");
+					throw new InvalidOperationException("Method requested (" + method + ") by the server does not exist.");
 				}
 
 				instance_class = type_property.GetValue(this);
@@ -72,7 +72,7 @@ namespace DtronixJsonRpc {
 				called_method_info.method_info = typ.GetMethod(call_parts[1]);
 
 				if (called_method_info.method_info == null) {
-					throw new InvalidOperationException("Method requested by the server does not exist.");
+					throw new InvalidOperationException("Method requested (" + method + ") by the server does not exist.");
 				}
 
 				// Get the method parameters.
@@ -83,7 +83,7 @@ namespace DtronixJsonRpc {
 
 
 				if (called_method_info.attribute_info == null) {
-					throw new InvalidOperationException("Method called is not allowed to be called.");
+					throw new InvalidOperationException("Method called (" + method + ") is not allowed to be called.");
 				}
 
 				called_method_cache.TryAdd(method, called_method_info);
@@ -94,11 +94,11 @@ namespace DtronixJsonRpc {
 			Type parameter_type = called_method_info.parameter_info[0]?.ParameterType;
 
 			if (parameter_type == null) {
-				throw new InvalidOperationException("Called method does not have a parameter which to pass the data to.");
+				throw new InvalidOperationException("Method called (" + method + ") does not have a parameter which to pass the data to.");
 			}
 
 			if (called_method_info.attribute_info.Source != JsonRpcSource.Unset && called_method_info.attribute_info.Source != Connector.Mode) {
-				throw new InvalidOperationException("Method called is not allowed to be called in a " + Connector.Mode.ToString());
+				throw new InvalidOperationException("Method called (" + method + ") is not allowed to be called in a " + Connector.Mode.ToString());
 			}
 
 			try {

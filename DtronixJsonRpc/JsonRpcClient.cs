@@ -491,6 +491,11 @@ namespace DtronixJsonRpc {
 						}
 					}
 
+					// Set the ID to String.Empty to allow the notifications to be executed on this connection.
+					if (id == null) {
+						id = string.Empty;
+					}
+
 					// Get the called method once and determine what to do with the data.
 					string method = data["method"].Value<string>();
 
