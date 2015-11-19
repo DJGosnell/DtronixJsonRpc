@@ -102,6 +102,8 @@ namespace DtronixJsonRpc {
 
 		/// <summary>
 		/// Port this client is bound to.
+		/// 
+		/// Default: 2828.
 		/// </summary>
 		public int Port { get; private set; } = 2828;
 
@@ -247,6 +249,11 @@ namespace DtronixJsonRpc {
 				// Read the user info object.
 				var user_info = Read()["params"]?.ToObject<ClientInfo>();
 
+				// If the server requires the same version client, verify it.
+				if(Server.Configurations.RequireSameVersion && user_info.Version != Server.Configurations.Version) {
+					failure_reason = "Client is not the same version as the server.";
+				}
+
 				// Send the ID to the client
 				Send(new JsonRpcRequest(null, Info.Id), true);
 
@@ -262,7 +269,7 @@ namespace DtronixJsonRpc {
 				Info.Username = user_info?.Username?.Trim();
 
 				// Check to ensure the client should connect.
-				if (Server.Clients.Values.Any(cli => cli.Info.Id != Info.Id && cli.Info.Username == Info.Username)) {
+				if (Server.Configurations.AllowDuplicateUsernames == false && Server.Clients.Values.Any(cli => cli.Info.Id != Info.Id && cli.Info.Username == Info.Username)) {
 					failure_reason = "Duplicate username on server.";
 				}
 

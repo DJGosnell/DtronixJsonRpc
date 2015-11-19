@@ -54,5 +54,24 @@ namespace DtronixJsonRpc {
 				_DisconnectReason = value;
 			}
 		}
+
+
+		private string _Version;
+
+		/// <summary>
+		/// Version of the client.
+		/// </summary>
+		public string Version {
+			get { return _Version; }
+			set {
+				if (value?.Length > 16) {
+					throw new InvalidOperationException("Version must be under 16 characters.");
+				}
+
+				_Version = value;
+			}
+		}
+
+
 	}
 }

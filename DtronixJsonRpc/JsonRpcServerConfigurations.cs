@@ -64,6 +64,39 @@ namespace DtronixJsonRpc {
 		/// </summary>
 		public int PingTimeoutDisconnectTime { get; set; } = 15 * 1000;
 
+		/// <summary>
+		/// Sets the version of this server instance.
+		/// 
+		/// Default: "1.0"
+		/// </summary>
+		public string Version { get; set; } = "1.0";
+
+		/// <summary>
+		/// If set to true, when the client attempts to connect, it will be required to have the same version number as the server.
+		/// 
+		/// Default: true;
+		/// </summary>
+		public bool RequireSameVersion { get; set; } = true;
+
+
+		/// <summary>
+		/// If set to false, when the client attempts to connect, it's username will be checked along the other connected clients.
+		/// If there is a duplicate username, the new client will be disconnected.
+		/// 
+		/// Default: false;
+		/// </summary>
+		public bool AllowDuplicateUsernames { get; set; } = false;
+
+
+		/// <summary>
+		/// If set to true, a client will be allowed to connect and get server information then disconnect.
+		/// An anonymous user can not send any information to the server.
+		/// 
+		/// Default: false.
+		/// </summary>
+		public bool AllowAnonymousConnections { get; set; } = false;
 
 	}
+
+
 }
