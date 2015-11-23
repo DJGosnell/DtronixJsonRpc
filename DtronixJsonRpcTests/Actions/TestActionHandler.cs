@@ -8,6 +8,8 @@ using System.Threading.Tasks;
 namespace DtronixJsonRpcTests.Actions {
 	public class TestActionHandler : ActionHandler<TestActionHandler> {
 
+
+
 		private TestClientActions _TestClientActions = null;
 		public TestClientActions TestClientActions {
 			get {
@@ -21,5 +23,8 @@ namespace DtronixJsonRpcTests.Actions {
 				return _TestServerActions ?? (_TestServerActions = new TestServerActions(Connector));
 			}
 		}
+
+		public override string Version { get; } = "1.0";
+		
 	}
 }

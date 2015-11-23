@@ -22,8 +22,13 @@ namespace DtronixJsonRpc {
 	///		}
 	/// }
 	/// </example>
-	public class ActionHandler<THandler>
+	public abstract class ActionHandler<THandler>
 		where THandler : ActionHandler<THandler>, new() {
+
+		/// <summary>
+		/// Version of this client/server.
+		/// </summary>
+		public abstract string Version { get; }
 
 		private static Logger logger = LogManager.GetCurrentClassLogger();
 

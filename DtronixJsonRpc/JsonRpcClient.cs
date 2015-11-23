@@ -197,6 +197,7 @@ namespace DtronixJsonRpc {
 			Actions = new THandler();
 			Actions.Connector = this;
 			serializer = new JsonSerializer();
+			Info.Version = Actions.Version;
 		}
 
 		/// <summary>
@@ -246,11 +247,11 @@ namespace DtronixJsonRpc {
 			try {
 				string failure_reason = null;
 
-				// Read the user info object.
-				var user_info = Read()["params"]?.ToObject<ClientInfo>();
+				// Read the client info object.
+				var client_info = Read()["params"]?.ToObject<ClientInfo>();
 
 				// If the server requires the same version client, verify it.
-				if(Server.Configurations.RequireSameVersion && user_info.Version != Server.Configurations.Version) {
+				if(Server.Configurations.RequireSameVersion && client_info.Version != Actions.Version) {
 					failure_reason = "Client is not the same version as the server.";
 				}
 
@@ -261,12 +262,12 @@ namespace DtronixJsonRpc {
 				var authentication_text = Read()["params"]?.ToObject<string>();
 
 				// Check to ensure a valid user info class was passed.
-				if (user_info == null) {
+				if (client_info == null) {
 					failure_reason = "User information passed was invalid.";
 				}
 
 				// Clean the username.
-				Info.Username = user_info?.Username?.Trim();
+				Info.Username = client_info?.Username?.Trim();
 
 				// Check to ensure the client should connect.
 				if (Server.Configurations.AllowDuplicateUsernames == false && Server.Clients.Values.Any(cli => cli.Info.Id != Info.Id && cli.Info.Username == Info.Username)) {
@@ -474,7 +475,14 @@ namespace DtronixJsonRpc {
 					data = Read();
 
 					// Call the internal event.
-					OnDataReceived?.Invoke(this, new OnDataReceivedEventArgs(data));
+					var data_received_event_args = new OnDataReceivedEventArgs(data);
+					OnDataReceived?.Invoke(this, data_received_event_args);
+
+					//If the call was handled in the event, continue on to the next request.
+					if (data_received_event_args.Handled) {
+						logger.Debug("{0} CID {1}: Request by the other client was handled by the event handler.", Mode, Info.Id);
+						continue;
+					}
 
 					// See if we have reached the end of the stream.
 					if (data == null) {

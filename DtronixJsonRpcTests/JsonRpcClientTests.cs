@@ -65,7 +65,7 @@ namespace DtronixJsonRpcTests {
 					if (e.Data?["method"].ToString().StartsWith("rpc.") == false) {
 						Assert.Equal("TestClientActions.Noop", e.Data["method"]);
 						Assert.Equal(25166213, e.Data["params"].Value<long>("RandomLong"));
-
+						e.Handled = true;
 						DisconnectClient();
 						wait.Set();
 					}
@@ -155,7 +155,7 @@ namespace DtronixJsonRpcTests {
 		public async void Connect_should_authenticate() {
 
 			server_task = new Task(() => {
-				CreateServerClient(AUTH_TEXT);
+				Assert.True(CreateServerClient(AUTH_TEXT));
 
 				DisconnectClient();
 
@@ -167,9 +167,22 @@ namespace DtronixJsonRpcTests {
 		}
 
 		[Fact]
-		public async void Connect_should_fail_authentication() {
+		public async void Connect_should_fail_authentication_with_fake_auth_data() {
 			server_task = new Task(() => {
-				CreateServerClient("FakeAuthData");
+				Assert.False(CreateServerClient("FakeAuthData"));
+				DisconnectClient();
+
+			});
+
+			client_task = new Task(() => { client.Connect(); });
+
+			await StartAndWaitClient();
+		}
+
+		[Fact]
+		public async void Connect_should_fail_authentication_with_invalid_version() {
+			server_task = new Task(() => {
+				Assert.False(CreateServerClient(AUTH_TEXT, "0.1"));
 				DisconnectClient();
 
 			});
@@ -193,7 +206,7 @@ namespace DtronixJsonRpcTests {
 		}
 
 
-		private bool CreateServerClient(string auth_string) {
+		private bool CreateServerClient(string auth_string, string version_check = "1.0") {
 			server_client = server.AcceptTcpClient();
 			server_client_stream = server_client.GetStream();
 			writer = new BsonWriter(server_client_stream);
@@ -206,7 +219,7 @@ namespace DtronixJsonRpcTests {
 				Send(new JsonRpcRequest(null, 1));
 				var authentication_text = Read()["params"].ToObject<string>();
 
-				if (auth_string == authentication_text) {
+				if (auth_string == authentication_text && client_info.Version == version_check) {
 					Send(new JsonRpcRequest("rpc.OnAuthenticationSuccess"));
 					return true;
 				} else {

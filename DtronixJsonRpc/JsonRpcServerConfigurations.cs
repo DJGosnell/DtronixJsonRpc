@@ -65,13 +65,6 @@ namespace DtronixJsonRpc {
 		public int PingTimeoutDisconnectTime { get; set; } = 15 * 1000;
 
 		/// <summary>
-		/// Sets the version of this server instance.
-		/// 
-		/// Default: "1.0"
-		/// </summary>
-		public string Version { get; set; } = "1.0";
-
-		/// <summary>
 		/// If set to true, when the client attempts to connect, it will be required to have the same version number as the server.
 		/// 
 		/// Default: true;
