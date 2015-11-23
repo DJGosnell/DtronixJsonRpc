@@ -198,6 +198,7 @@ namespace DtronixJsonRpc {
 			Actions.Connector = this;
 			serializer = new JsonSerializer();
 			Info.Version = Actions.Version;
+			client.SendTimeout = Server.Configurations.ClientSendTimeout;
 		}
 
 		/// <summary>

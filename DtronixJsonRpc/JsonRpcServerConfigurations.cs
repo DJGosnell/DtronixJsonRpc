@@ -89,6 +89,11 @@ namespace DtronixJsonRpc {
 		/// </summary>
 		public bool AllowAnonymousConnections { get; set; } = false;
 
+
+		/// <summary>
+		/// Gets or sets the amount of time a client will wait for a send operation to complete successfully.
+		/// </summary>
+		public int ClientSendTimeout { get; set; } = 10000;
 	}
 
 

@@ -227,7 +227,8 @@ namespace DtronixJsonRpc {
 		/// </summary>
 		/// <param name="action">Action to invoke for each client.</param>
 		public void Broadcast(Action<JsonRpcClient<THandler>> action) {
-			foreach (var client in clients) {
+			Parallel.ForEach(clients, )
+			foreach (var client in ) {
 				if (client.Value.Info.Status == ClientStatus.Connected) {
 					logger.Debug("Server: Broadcasting method to client {0}.", client.Value.Info.Id);
 					action(client.Value);
