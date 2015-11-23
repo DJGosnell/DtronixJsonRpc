@@ -79,7 +79,7 @@ namespace DtronixJsonRpcTests {
 
 					output.WriteLine($"{sw.ElapsedMilliseconds}ms to complete the iterations. {iterations / (sw.ElapsedMilliseconds / 1000d)} Calls per second.");
 
-					server.Stop("Test completed");
+					CompleteTest();
 
 				};
 
@@ -107,7 +107,7 @@ namespace DtronixJsonRpcTests {
 
 					Assert.True(result);
 
-					server.Stop("Test completed");
+					CompleteTest();
 
 				};
 
@@ -135,7 +135,7 @@ namespace DtronixJsonRpcTests {
 
 					Assert.False(result);
 
-					server.Stop("Test completed");
+					CompleteTest();
 
 				};
 
@@ -161,7 +161,7 @@ namespace DtronixJsonRpcTests {
 
 					Assert.True(result);
 
-					server.Stop("Test completed");
+					CompleteTest();
 
 				};
 
@@ -181,7 +181,7 @@ namespace DtronixJsonRpcTests {
 
 					e.Client.OnDataReceived += (sender2, e2) => {
 						if (e2.Data["method"].ToString() == "TestServerActions.NotifyServer") {
-							server.Stop("Test completed");
+							CompleteTest();
 						}
 					};
 				};
@@ -208,6 +208,7 @@ namespace DtronixJsonRpcTests {
 		}
 
 		public async Task<bool> StartAndWaitClient(int wait_duration = 5000) {
+			bool ex_thrown = false;
 
 			try {
 				server_task.Start();
@@ -215,8 +216,10 @@ namespace DtronixJsonRpcTests {
 
 				if (await Task.WhenAny(server_task, Task.Delay(wait_duration)) != server_task) {
 					client.Disconnect("Test failed to complete within the time limitation.");
-					return false;
+					ex_thrown = true;
+					throw new TimeoutException("Test failed to complete within the time limitation.");
 				}
+
 			} finally {
 				server_task.Exception?.Handle(ex => {
 					throw ex;
@@ -225,6 +228,10 @@ namespace DtronixJsonRpcTests {
 				client_task.Exception?.Handle(ex => {
 					throw ex;
 				});
+
+				if (ex_thrown == false && server.StopReason != "Test completed successfully.") {
+					throw new Exception("Test did not complete successfully.");
+				}
 			}
 
 			return true;
@@ -233,14 +240,18 @@ namespace DtronixJsonRpcTests {
 
 		[Fact]
 		public async void Ping_client_times_out() {
-			server.Configurations.PingFrequency = 1000;
-            server.Configurations.PingTimeoutDisconnectTime = 4000;
+			server.Configurations.PingFrequency = 250;
+			server.Configurations.PingTimeoutDisconnectTime = 500;
 
 			server = new JsonRpcServer<TestActionHandler>(server.Configurations);
 
 			server_task = new Task(() => {
 				server.OnClientConnect += (sender, e) => {
-					e.Client.Actions.TestClientActions.BlockThread(20000);
+					e.Client.Actions.TestClientActions.BlockThread(2000);
+				};
+
+				server.OnClientDisconnect += (sender, e) => {
+					CompleteTest();
 				};
 
 				server.Start();
@@ -250,10 +261,47 @@ namespace DtronixJsonRpcTests {
 				client.Connect();
 			});
 
+			await StartAndWaitClient();
+		}
+
+		[Fact]
+		public async void Ping_does_not_times_out() {
+			server.Configurations.PingFrequency = 250;
+			server.Configurations.PingTimeoutDisconnectTime = 500;
+
+			server = new JsonRpcServer<TestActionHandler>(server.Configurations);
+
+			server_task = new Task(() => {
+				server.OnClientConnect += (sender, e) => {
 
 
-			await StartAndWaitClient(10000);
+					Task.Run(async () => {
+						await Task.Delay(1000);
 
+						if (e.Client.Info.Status == ClientStatus.Connected) {
+							CompleteTest();
+						} else {
+							FailTest();
+						 }
+					});
+				};
+
+				server.Start();
+			});
+
+			client_task = new Task(() => {
+				client.Connect();
+			});
+
+			await StartAndWaitClient();
+		}
+
+		private void CompleteTest() {
+			server.Stop("Test completed successfully.");
+		}
+
+		private void FailTest() {
+			server.Stop("Test failed.");
 		}
 
 	}

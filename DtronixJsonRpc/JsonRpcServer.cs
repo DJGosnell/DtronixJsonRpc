@@ -57,6 +57,11 @@ namespace DtronixJsonRpc {
 		public object DataObject { get; set; }
 
 		/// <summary>
+		/// Stored reason why the server was stopped.
+		/// </summary>
+		public string StopReason { get; private set; }
+
+		/// <summary>
 		/// Current configuration of the server.
 		/// </summary>
 		public JsonRpcServerConfigurations Configurations { get; }
@@ -113,9 +118,12 @@ namespace DtronixJsonRpc {
 
 			ping_timer.Elapsed += (sender, e) => {
 				EachClient(cl => {
-					if (cl.ping_stopwatch.IsRunning && cl.ping_stopwatch.ElapsedMilliseconds > configurations.PingTimeoutDisconnectTime) {
-						// If we are still waiting on the ping response, give it until the ping timeout disconnect time.
-						cl.Disconnect("Client lost connection to the server. (Ping timeout)");
+					if (cl.ping_stopwatch.IsRunning) {
+						if (cl.ping_stopwatch.ElapsedMilliseconds > configurations.PingTimeoutDisconnectTime) {
+							logger.Info("Server: Client ({0}) ping timeout.", cl.Info.Id);
+							// If we are still waiting on the ping response, give it until the ping timeout disconnect time.
+							cl.Disconnect("Client lost connection to the server. (Ping timeout)");
+						}
 					} else {
 						// If the ping timer is not running, start it.
 						cl.ping_stopwatch.Restart();
@@ -248,10 +256,11 @@ namespace DtronixJsonRpc {
 		/// </summary>
 		/// <param name="reason">A reason to log and broadcast for the server shutdown.</param>
 		public void Stop(string reason) {
-			if (_IsStopping) {
+			if (StopReason != null) {
 				logger.Debug("Server: Stop requested after server is already in the process of stopping. Reason: {0}", reason);
 			}
-			_IsStopping = true;
+
+			StopReason = reason;
 
 			logger.Info("Server: Stopping server. Reason: {0}", reason);
 			EachClient(cl => {
