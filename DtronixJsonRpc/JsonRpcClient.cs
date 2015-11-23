@@ -174,6 +174,8 @@ namespace DtronixJsonRpc {
 		/// <param name="id">Id of the client provided by the server.</param>
 		/// <returns></returns>
 		internal static JsonRpcClient<THandler> CreateConnector(JsonRpcServer<THandler> server, TcpClient client, int id) {
+			client.SendTimeout = server.Configurations.ClientSendTimeout;
+
 			return new JsonRpcClient<THandler>(id) {
 				Server = server,
 				client = client,
@@ -198,7 +200,6 @@ namespace DtronixJsonRpc {
 			Actions.Connector = this;
 			serializer = new JsonSerializer();
 			Info.Version = Actions.Version;
-			client.SendTimeout = Server.Configurations.ClientSendTimeout;
 		}
 
 		/// <summary>
@@ -335,7 +336,7 @@ namespace DtronixJsonRpc {
 			if (Server.Configurations.BroadcastClientStatusChanges) {
 
 				// Broadcast to all the other clients that there is a new connection if desired.
-				Server.Broadcast(cl => {
+				Server.EachClient(cl => {
 
 					// This client will know it is connected by other means.
 					if (cl?.Info.Id == Info.Id) {

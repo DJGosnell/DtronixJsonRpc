@@ -207,13 +207,13 @@ namespace DtronixJsonRpcTests {
 
 		}
 
-		public async Task<bool> StartAndWaitClient() {
+		public async Task<bool> StartAndWaitClient(int wait_duration = 5000) {
 
 			try {
 				server_task.Start();
 				client_task.Start();
 
-				if (await Task.WhenAny(server_task, Task.Delay(5000)) != server_task) {
+				if (await Task.WhenAny(server_task, Task.Delay(wait_duration)) != server_task) {
 					client.Disconnect("Test failed to complete within the time limitation.");
 					return false;
 				}
@@ -228,6 +228,32 @@ namespace DtronixJsonRpcTests {
 			}
 
 			return true;
+		}
+
+
+		[Fact]
+		public async void Ping_client_times_out() {
+			server.Configurations.PingFrequency = 1000;
+            server.Configurations.PingTimeoutDisconnectTime = 4000;
+
+			server = new JsonRpcServer<TestActionHandler>(server.Configurations);
+
+			server_task = new Task(() => {
+				server.OnClientConnect += (sender, e) => {
+					e.Client.Actions.TestClientActions.BlockThread(20000);
+				};
+
+				server.Start();
+			});
+
+			client_task = new Task(() => {
+				client.Connect();
+			});
+
+
+
+			await StartAndWaitClient(10000);
+
 		}
 
 	}

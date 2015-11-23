@@ -55,7 +55,7 @@ namespace DtronixJsonRpc {
 		/// 
 		/// Default: 5 seconds.
 		/// </summary>
-		public int PingFrequency { get; set; } = 5000;
+		public int PingFrequency { get; set; } = 5 * 1000;
 
 		/// <summary>
 		/// If the ping time exceeds the specified number of milliseconds, the client will be automatically disconnected.
@@ -93,7 +93,7 @@ namespace DtronixJsonRpc {
 		/// <summary>
 		/// Gets or sets the amount of time a client will wait for a send operation to complete successfully.
 		/// </summary>
-		public int ClientSendTimeout { get; set; } = 10000;
+		public int ClientSendTimeout { get; set; } = 10 * 1000;
 	}
 
 

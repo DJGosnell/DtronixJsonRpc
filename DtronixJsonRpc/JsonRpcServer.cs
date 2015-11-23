@@ -112,9 +112,15 @@ namespace DtronixJsonRpc {
 			ping_timer = new System.Timers.Timer(Configurations.PingFrequency);
 
 			ping_timer.Elapsed += (sender, e) => {
-				Broadcast(cl => {
-					cl.ping_stopwatch.Restart();
-					cl.Send(new JsonRpcRequest("rpc.ping", JsonRpcSource.Server));
+				EachClient(cl => {
+					if (cl.ping_stopwatch.IsRunning && cl.ping_stopwatch.ElapsedMilliseconds > configurations.PingTimeoutDisconnectTime) {
+						// If we are still waiting on the ping response, give it until the ping timeout disconnect time.
+						cl.Disconnect("Client lost connection to the server. (Ping timeout)");
+					} else {
+						// If the ping timer is not running, start it.
+						cl.ping_stopwatch.Restart();
+						cl.Send(new JsonRpcRequest("rpc.ping", JsonRpcSource.Server));
+					}
 				});
 			};
 		}
@@ -181,7 +187,7 @@ namespace DtronixJsonRpc {
 					}
 
 					// Alert all the clients that this client disconnected.
-					Broadcast(cl => cl.Send(new JsonRpcRequest("rpc." + nameof(JsonRpcClient<THandler>.OnConnectedClientChange), new ClientInfo[] { removed_client.Info })));
+					EachClient(cl => cl.Send(new JsonRpcRequest("rpc." + nameof(JsonRpcClient<THandler>.OnConnectedClientChange), new ClientInfo[] { removed_client.Info })));
 
 					// Invoke the event stating that a client disconnected.
 					OnClientDisconnect?.Invoke(this, e);
@@ -193,8 +199,10 @@ namespace DtronixJsonRpc {
 					// Invoke the event stating that a new client has successfully connected.
 					OnClientConnect?.Invoke(this, e);
 
-					// Start the ping timer.
-					ping_timer.Start();
+					// Start the ping timer if configured so and only if it is not already running.
+					if (Configurations.PingClients && ping_timer.Enabled == false) {
+						ping_timer.Start();
+					}
 				};
 
 				// See if we have authentication
@@ -216,7 +224,7 @@ namespace DtronixJsonRpc {
 
 			// If the server is shutting down, broadcast this event to all the clients before a disconnect.
 			if (cancellation_token_source.IsCancellationRequested) {
-				Broadcast(cl => cl.Send(new JsonRpcRequest("rpc." + nameof(JsonRpcClient<THandler>.OnDisconnect), "Server shutting down.")));
+				EachClient(cl => cl.Send(new JsonRpcRequest("rpc." + nameof(JsonRpcClient<THandler>.OnDisconnect), "Server shutting down.")));
 			}
 
 			logger.Info("Server: Stopped");
@@ -226,14 +234,13 @@ namespace DtronixJsonRpc {
 		/// Calls an action and passes it a connected client for each client.
 		/// </summary>
 		/// <param name="action">Action to invoke for each client.</param>
-		public void Broadcast(Action<JsonRpcClient<THandler>> action) {
-			Parallel.ForEach(clients, )
-			foreach (var client in ) {
+		public void EachClient(Action<JsonRpcClient<THandler>> action) {
+			Parallel.ForEach(clients, client => {
 				if (client.Value.Info.Status == ClientStatus.Connected) {
 					logger.Debug("Server: Broadcasting method to client {0}.", client.Value.Info.Id);
 					action(client.Value);
 				}
-			}
+			});
 		}
 
 		/// <summary>
@@ -247,7 +254,7 @@ namespace DtronixJsonRpc {
 			_IsStopping = true;
 
 			logger.Info("Server: Stopping server. Reason: {0}", reason);
-			Broadcast(cl => {
+			EachClient(cl => {
 				if (cl.Info.Status != ClientStatus.Disconnecting) {
 					cl.Disconnect("Server Shutdown. Reason: " + reason);
 				}
