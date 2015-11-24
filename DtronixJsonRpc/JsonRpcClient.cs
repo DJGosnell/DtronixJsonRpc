@@ -440,7 +440,7 @@ namespace DtronixJsonRpc {
 
 
 				// Inform all the other clients of the new connection if desired.
-				if (Server.Configurations.BroadcastClientStatusChanges && Mode == JsonRpcSource.Client) {
+				if (Mode == JsonRpcSource.Server && Server.Configurations.BroadcastClientStatusChanges) {
 
 					// Broadcast to all the other clients that there is a new connection if desired.
 					Server.EachClient(cl => {

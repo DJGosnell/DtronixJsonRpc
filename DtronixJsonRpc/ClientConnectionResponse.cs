@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace DtronixJsonRpc {
-	class ClientConnectionResponse {
+	internal class ClientConnectionResponse {
 		public string Error { get; set; }
 		public int ClientId { get; set; }
 
