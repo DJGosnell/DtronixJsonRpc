@@ -51,6 +51,8 @@
     <Compile Include="ActionHandler.cs" />
     <Compile Include="AuthenticationFailureEventArgs.cs" />
     <Compile Include="ClientConnectEventArgs.cs" />
+    <Compile Include="ClientConnectionRequest.cs" />
+    <Compile Include="ClientConnectionResponse.cs" />
     <Compile Include="ClientStatus.cs" />
     <Compile Include="ConnectedClientChangedEventArgs.cs" />
     <Compile Include="ConnectorAuthenticationEventArgs.cs" />

@@ -1,7 +1,7 @@
 ﻿using System;
 
 namespace DtronixJsonRpc {
-	public class ClientInfo{
+	public class ClientInfo {
 
 		private int _Id;
 

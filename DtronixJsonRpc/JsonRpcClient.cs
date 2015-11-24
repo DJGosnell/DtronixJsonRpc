@@ -245,45 +245,37 @@ namespace DtronixJsonRpc {
 		/// Method to provide authentication verification from the server side.
 		/// </summary>
 		/// <returns>Returns on successful authentication. False otherwise.</returns>
-		protected virtual bool AuthenticateClient() {
+		private ClientConnectionResponse AuthenticateClient() {
 			try {
-				string failure_reason = null;
-
 				// Read the client info object.
-				var client_info = Read()["params"]?.ToObject<ClientInfo>();
+				var client_conn_info = Read()?["params"]?.ToObject<ClientConnectionRequest>();
 
-				// If the server requires the same version client, verify it.
-				if(Server.Configurations.RequireSameVersion && client_info.Version != Actions.Version) {
-					failure_reason = "Client is not the same version as the server.";
+				// Check to ensure a valid connection request class was passed.
+				if (client_conn_info == null) {
+					return new ClientConnectionResponse("User information passed was invalid.");
 				}
 
-				// Send the ID to the client
-				Send(new JsonRpcRequest(null, Info.Id), true);
-
-				// Read the authentication "Data" text.
-				var authentication_text = Read()["params"]?.ToObject<string>();
-
-				// Check to ensure a valid user info class was passed.
-				if (client_info == null) {
-					failure_reason = "User information passed was invalid.";
+				// If the server requires the same version client, verify it.
+				if (Server.Configurations.RequireSameVersion && client_conn_info.Version != Actions.Version) {
+					return new ClientConnectionResponse("Client is not the same version as the server.");
 				}
 
 				// Clean the username.
-				Info.Username = client_info?.Username?.Trim();
+				Info.Username = client_conn_info.Username?.Trim();
+
+				// Check to see if a username was provided.
+				if (Server.Configurations.AllowAnonymousConnections == false && string.IsNullOrEmpty(Info.Username)) {
+					return new ClientConnectionResponse("Did not provide a username.");
+				}
 
 				// Check to ensure the client should connect.
 				if (Server.Configurations.AllowDuplicateUsernames == false && Server.Clients.Values.Any(cli => cli.Info.Id != Info.Id && cli.Info.Username == Info.Username)) {
-					failure_reason = "Duplicate username on server.";
-				}
-
-				// Check to see if a username was provided.
-				if (string.IsNullOrEmpty(Info.Username)) {
-					failure_reason = "Did not provide a username.";
+					return new ClientConnectionResponse("Client connected with duplicate username.");
 				}
 
 				// Authorize client.
 				var auth_args = new ConnectorAuthenticationEventArgs() {
-					Data = authentication_text
+					Data = client_conn_info.AuthData
 				};
 
 				// Verify the client against the event set.
@@ -293,100 +285,64 @@ namespace DtronixJsonRpc {
 					OnAuthenticationVerify?.Invoke(this, auth_args);
 
 					// Verify whether or not the client has passed the challenge.
-					if (auth_args.Authenticated) {
-						Info.Status = ClientStatus.Connected;
-					} else {
-						failure_reason = auth_args.FailureReason;
+					if (auth_args.Authenticated == false) {
+						return new ClientConnectionResponse(auth_args.FailureReason);
 					}
-
-
-				} else {
-
-					// Client has successfully authenticated.
-					Info.Status = ClientStatus.Connected;
 				}
-
-
-				if (Info.Status != ClientStatus.Connected || failure_reason != null) {
-
-					// Inform the client that it failed authentication before disconnecting it.
-					Send(new JsonRpcRequest("rpc." + nameof(OnAuthenticationFailure), failure_reason), true);
-
-					// Disconnect the client if it has not passed authentication.
-					Disconnect("Authentication Failed. Reason: " + failure_reason);
-					return false;
-
-				} else {
-					// Inform the client that it has successfully authenticated.
-					Send(new JsonRpcRequest("rpc.OnAuthenticationSuccess"), true);
-
-					// Invoke the client connect event on the server.
-					OnConnect?.Invoke(this, new ClientConnectEventArgs<THandler>(Server, this));
-				}
-
 
 			} catch (OperationCanceledException) {
 
 				// Called if the authentication timeout has occurred.
-				Disconnect("Client authentication timeout.");
-				return false;
+				return new ClientConnectionResponse("Client authentication timeout.");
 			}
 
-			// Inform all the other clients of the new connection if desired.
-			if (Server.Configurations.BroadcastClientStatusChanges) {
+			logger.Debug("{0} CID {1}: Successfully authenticated on the server.", Mode, Info.Id);
 
-				// Broadcast to all the other clients that there is a new connection if desired.
-				Server.EachClient(cl => {
-
-					// This client will know it is connected by other means.
-					if (cl?.Info.Id == Info.Id) {
-						return;
-					}
-
-					// Send the info to the client.
-					cl.Send(new JsonRpcRequest("rpc." + nameof(OnConnectedClientChange), new ClientInfo[] { Info }));
-				});
-			}
-
-			// Inform this client that it has connected and send it all the connected clients.
-			if (Server.Configurations.BroadcastClientStatusChanges) {
-				Send(new JsonRpcRequest("rpc." + nameof(OnConnectedClientChange), Server.Clients.Select(cl => cl.Value.Info).ToArray()), true);
-			}
-
-			logger.Debug("{0} CID {1}: Successfully authorized on the server.", Mode, Info.Id);
-
-			return true;
+			return new ClientConnectionResponse() {
+				ClientId = Info.Id
+			};
 		}
 
 		/// <summary>
 		/// Requests authentication verification from the client side.
 		/// </summary>
-		protected virtual void RequestAuthentication() {
+		private ClientConnectionResponse RequestAuthentication() {
 			try {
-				// Send this client info to the server.
-				Send(new JsonRpcRequest(null, Info), true);
-
-				// Read the ID from the server
-				var uid = Read()?["params"]?.ToObject<int>();
-
-				if (uid == null) {
-					Disconnect("Server connection closed.");
-					return;
-				}
-
-				Info.Id = uid.Value;
-
-				// Authorize the client with the specified events.
 				var auth_args = new ConnectorAuthenticationEventArgs();
 
 				// Fire the event to set the challenge data before sending it to the server.
 				OnAuthenticationRequest?.Invoke(this, auth_args);
 
-				// Send the data to the server to verify.
-				Send(new JsonRpcRequest(null, auth_args.Data ?? ""), true);
+				// Setup the connection request information
+				var conn_request = new ClientConnectionRequest() {
+					Username = Info.Username,
+					Version = Actions.Version,
+					AuthData = auth_args.Data
+				};
+
+				// Send this client info to the server.
+				Send(new JsonRpcRequest(null, conn_request), true);
+
+				// Read the response from the server
+				var vs = Read();
+				var response = vs?["params"]?.ToObject<ClientConnectionResponse>();
+
+				// If the response is null, the client did not receive valid data from the server.
+				if (response == null) {
+					return new ClientConnectionResponse("Server did not return valid data.");
+				}
+
+				// If an error occurred, let the client know.
+				if (response.Error != null) {
+					return response;
+				}
+
+				Info.Id = response.ClientId;
+
+				return response;
 
 			} catch (OperationCanceledException) {
-				Disconnect("Server authentication timed out.");
+				return new ClientConnectionResponse("Server authentication timed out.");
 			}
 		}
 
@@ -394,9 +350,9 @@ namespace DtronixJsonRpc {
 		/// Connects to the server with the specified connection info.
 		/// </summary>
 		public void Connect() {
+			ClientConnectionResponse result;
 
 			try {
-
 				logger.Info("{0} CID {1}: New client started", Mode, Info.Id);
 
 				// Set the client into "Connecting" mode. This prevents normal requests from executing.
@@ -448,24 +404,59 @@ namespace DtronixJsonRpc {
 					}
 				});
 
-
 				if (Mode == JsonRpcSource.Server) {
 
 					// If we are the server, verify the authentication data passed.
-					if (AuthenticateClient() == false) {
-						logger.Debug("{0} CID {1}: Authentication failure.", Mode, Info.Id);
-						return;
-					}
-
-					logger.Debug("{0} CID {1}: Authorized", Mode, Info.Id);
+					result = AuthenticateClient();
+					
 				} else {
 
-					// Request verification the authentication data.
-					RequestAuthentication();
+					// Request verification of the authentication data.
+					result = RequestAuthentication();
 				}
 
-				// The client is currently connected, but not authenticated.
+				// Let the client know the result.
+				Send(new JsonRpcRequest(null, result), true);
+
+				// Check for errors and handle them if they occurred.
+				if (result.Error != null) {
+					logger.Debug("{0} CID {1}: Authentication failure. Reason: {2}", Mode, Info.Id, result.Error);
+
+					// Fire the failure event.
+					OnAuthenticationFailure?.Invoke(this, new AuthenticationFailureEventArgs(result.Error));
+					
+					// Disconnect the client
+					Disconnect(result.Error);
+					return;
+				}
+
+				logger.Debug("{0} CID {1}: Authentication success.", Mode, Info.Id);
+
+				// Client has successfully authenticated.
 				Info.Status = ClientStatus.Connected;
+
+				// Fire the connection event.
+				OnConnect?.Invoke(this, new ClientConnectEventArgs<THandler>(Server, this));
+
+
+				// Inform all the other clients of the new connection if desired.
+				if (Server.Configurations.BroadcastClientStatusChanges && Mode == JsonRpcSource.Client) {
+
+					// Broadcast to all the other clients that there is a new connection if desired.
+					Server.EachClient(cl => {
+
+						// This client will know it is connected by other means.
+						if (cl?.Info.Id == Info.Id) {
+							return;
+						}
+
+						// Send the info to the client.
+						cl.Send(new JsonRpcRequest("rpc." + nameof(OnConnectedClientChange), new ClientInfo[] { Info }));
+					});
+
+					// Inform this client that it has connected and send it all the connected clients.
+					Send(new JsonRpcRequest("rpc." + nameof(OnConnectedClientChange), Server.Clients.Select(cl => cl.Value.Info).ToArray()), true);
+				}
 
 				// Read over the incoming data until we have a cancellation request.
 				while (cancellation_token_source.IsCancellationRequested == false) {
@@ -524,7 +515,6 @@ namespace DtronixJsonRpc {
 						continue;
 					}
 
-
 					try {
 
 						// If the method starts with a "rpc", the method is a special method and handled internally.
@@ -580,25 +570,7 @@ namespace DtronixJsonRpc {
 					Disconnect(clients_info[0].DisconnectReason, (Mode == JsonRpcSource.Client) ? JsonRpcSource.Server : JsonRpcSource.Client, SocketError.Success);
 				}
 
-			} else if (method == "rpc." + nameof(OnAuthenticationFailure)) {
-
-				// Method called when the authentication process fails.  Provides the reason why.
-				if (Mode == JsonRpcSource.Client) {
-					logger.Debug("{0} CID {1}: Failed authentication", Mode, Info.Id);
-
-					var reason = data["params"].ToObject<string>();
-					OnAuthenticationFailure?.Invoke(this, new AuthenticationFailureEventArgs(reason));
-				}
-
-			} else if (method == "rpc.OnAuthenticationSuccess") {
-
-				// Method called when the authentication process succeeds.
-				if (Mode == JsonRpcSource.Client) {
-					logger.Debug("{0} CID {1}: Authenticated.", Mode, Info.Id);
-					OnConnect?.Invoke(this, new ClientConnectEventArgs<THandler>(Server, this));
-				}
-
-			} else if (method == "rpc.ping") {
+			}  else if (method == "rpc.ping") {
 
 				// Method called to determine the latency of the connection.
 				// Server pings client, client responds immediately, server sends the latency back to the client.
