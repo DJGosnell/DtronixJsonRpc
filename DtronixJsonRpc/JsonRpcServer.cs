@@ -105,10 +105,9 @@ namespace DtronixJsonRpc {
 
 
 		/// <summary>
-		/// Creates a JsonRpcServer instance on the IP address and port specified.
+		/// Creates a JsonRpcServer instance with the specified configurations
 		/// </summary>
-		/// <param name="address"></param>
-		/// <param name="port">Port to listen to.</param>
+		/// <param name="configurations">Configurations to load on server initialization.</param>
 		public JsonRpcServer(JsonRpcServerConfigurations configurations) {
 			Configurations = configurations;
 			cancellation_token_source = new CancellationTokenSource();
