@@ -375,6 +375,11 @@ namespace DtronixJsonRpc {
 
 				// If we are in client mode, we need to initiate the connection.  If we are in Server mode, the connection is already active.
 				if (Mode == JsonRpcSource.Client) {
+
+					// Reset the client to the default settings for a client.
+					Info.DisconnectReason = null;
+					Info.Id = -1;
+
 					logger.Info("{0} CID {1}: Attempting to connect to server", Mode, Info.Id);
 
 					// Attempt to connect to the server.  If we do not connect in the timeout period or a cancellation has been requested, cancel the connection attempt.
