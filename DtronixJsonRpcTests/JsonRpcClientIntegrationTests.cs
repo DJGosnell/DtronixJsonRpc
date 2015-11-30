@@ -14,42 +14,11 @@ using Xunit;
 using Xunit.Abstractions;
 
 namespace DtronixJsonRpcTests {
-	public class JsonRpcClientIntegrationTests {
+	public class JsonRpcClientIntegrationTests : JsonRpcIntegrationTestBase {
 
-		public static int port = 2827;
+		
 
-		private ManualResetEvent wait = new ManualResetEvent(false);
-
-		private JsonRpcServer<TestActionHandler> server;
-		private JsonRpcClient<TestActionHandler> client;
-		private JsonSerializer serializer = new JsonSerializer();
-		private Task server_task;
-		private Task client_task;
-
-		private const string AUTH_TEXT = "ArbitraryAuthText";
-		private ITestOutputHelper output;
-
-		public JsonRpcClientIntegrationTests(ITestOutputHelper output) {
-			this.output = output;
-
-			var configs = new JsonRpcServerConfigurations() {
-				BindingPort = Interlocked.Increment(ref port),
-				TransportProtocol = JsonRpcServerConfigurations.TransportMode.Bson
-			};
-
-			server = new JsonRpcServer<TestActionHandler>(configs);
-
-			client = JsonRpcClient<TestActionHandler>.CreateClient("localhost", server.Configurations.BindingPort, JsonRpcServerConfigurations.TransportMode.Bson);
-			client.Info.Username = "TestUser";
-
-			client.OnAuthenticationRequest += (sender, e) => {
-				e.Data = AUTH_TEXT;
-			};
-
-			server.OnAuthenticationVerification += (sender, e) => {
-				e.Authenticated = true;
-			};
-		}
+		public JsonRpcClientIntegrationTests(ITestOutputHelper output) : base(output) {	}
 
 		[Fact]
 		public async void ReturnTrue_multiple_calls_succeed() {
@@ -207,35 +176,6 @@ namespace DtronixJsonRpcTests {
 
 		}
 
-		public async Task<bool> StartAndWaitClient(int wait_duration = 5000) {
-			bool ex_thrown = false;
-
-			try {
-				server_task.Start();
-				client_task.Start();
-
-				if (await Task.WhenAny(server_task, Task.Delay(wait_duration)) != server_task) {
-					client.Disconnect("Test failed to complete within the time limitation.");
-					ex_thrown = true;
-					throw new TimeoutException("Test failed to complete within the time limitation.");
-				}
-
-			} finally {
-				server_task.Exception?.Handle(ex => {
-					throw ex;
-				});
-
-				client_task.Exception?.Handle(ex => {
-					throw ex;
-				});
-
-				if (ex_thrown == false && server.StopReason != "Test completed successfully.") {
-					throw new Exception("Test did not complete successfully.");
-				}
-			}
-
-			return true;
-		}
 
 
 		[Fact]
@@ -296,13 +236,7 @@ namespace DtronixJsonRpcTests {
 			await StartAndWaitClient();
 		}
 
-		private void CompleteTest() {
-			server.Stop("Test completed successfully.");
-		}
-
-		private void FailTest() {
-			server.Stop("Test failed.");
-		}
+	
 
 	}
 }

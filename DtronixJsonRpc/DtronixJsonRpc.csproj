@@ -69,6 +69,7 @@
     <Compile Include="JsonRpcClient.cs" />
     <Compile Include="JsonRpcServer.cs" />
     <Compile Include="ClientDisconnectEventArgs.cs" />
+    <Compile Include="ReceiveServerInformationEventArgs.cs" />
     <Compile Include="ServerInfo.cs" />
     <Compile Include="Utilities.cs" />
   </ItemGroup>

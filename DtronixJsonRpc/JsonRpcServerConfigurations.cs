@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using Newtonsoft.Json.Linq;
+using System.Net;
 
 namespace DtronixJsonRpc {
 	/// <summary>
@@ -91,9 +92,25 @@ namespace DtronixJsonRpc {
 
 
 		/// <summary>
-		/// Gets or sets the amount of time a client will wait for a send operation to complete successfully.
+		/// Gets or sets the amount of time a client will wait for a send operation to complete successfully in milliseconds.
+		/// 
+		/// Default: 10 seconds.
 		/// </summary>
 		public int ClientSendTimeout { get; set; } = 10 * 1000;
+
+		/// <summary>
+		/// Name of the server. Used for connection informational purposes only.
+		/// 
+		/// Default: dtx-jsonrpc.
+		/// </summary>
+		public string ServerName { get; set; } = "dtx-jsonrpc";
+
+		/// <summary>
+		/// Abstract data that will be sent to the client on each connection request. (Description, Logo, etc...)
+		/// 
+		/// Default: null.
+		/// </summary>
+		public JToken ServerData { get; set; } = null;
 	}
 
 

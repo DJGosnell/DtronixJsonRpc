@@ -56,6 +56,11 @@ namespace DtronixJsonRpc {
 		public event EventHandler<JsonRpcClient<THandler>, AuthenticationFailureEventArgs> OnAuthenticationFailure;
 
 		/// <summary>
+		/// Event called when the receives information about the other end of the connection.
+		/// </summary>
+		public event EventHandler<JsonRpcClient<THandler>, ReceiveConnectionInformationEventArgs> OnReceiveConnectionInformation;
+
+		/// <summary>
 		/// Event called when a client has changed status. (Connected, Disconnected).
 		/// May not be called if the server is not configured to broadcast changes.
 		/// </summary>
@@ -269,8 +274,18 @@ namespace DtronixJsonRpc {
 				}
 
 				// Check to ensure the client should connect.
-				if (Server.Configurations.AllowDuplicateUsernames == false && Server.Clients.Values.Any(cli => cli.Info.Id != Info.Id && cli.Info.Username == Info.Username)) {
+				if (Info.Username != null && 
+					Server.Configurations.AllowDuplicateUsernames == false &&
+					Server.Clients.Values.Any(cli => cli.Info.Id != Info.Id && cli.Info.Username == Info.Username)) {
 					return new ClientConnectionResponse("Client connected with duplicate username.");
+				}
+
+				// If the client connecting has an empty username, it is an anonymous client and will only receive information about the server.
+				if (string.IsNullOrEmpty(Info.Username)) {
+					logger.Debug("{0} CID {1}: Connected in anonymous mode.", Mode, Info.Id);
+					return new ClientConnectionResponse() {
+						AnonymousClient = true
+					};
 				}
 
 				// Authorize client.
@@ -408,15 +423,31 @@ namespace DtronixJsonRpc {
 
 					// If we are the server, verify the authentication data passed.
 					result = AuthenticateClient();
-					
+
+					// Set the server information
+					result.ServerName = Server.Configurations.ServerName;
+					result.ServerData = Server.Configurations.ServerData;
+					result.Version = Actions.Version;
+
+					// Let the client know the result.
+					Send(new JsonRpcRequest(null, result), true);
+
 				} else {
 
 					// Request verification of the authentication data.
 					result = RequestAuthentication();
-				}
 
-				// Let the client know the result.
-				Send(new JsonRpcRequest(null, result), true);
+					// Invoke the event to let the client know the information about the server.
+					if (OnReceiveConnectionInformation != null) {
+						var args = new ReceiveConnectionInformationEventArgs() {
+							Version = result.Version,
+							ServerData = result.ServerData,
+							ServerName = result.ServerName
+						};
+
+						OnReceiveConnectionInformation.Invoke(this, args);
+					}
+				}
 
 				// Check for errors and handle them if they occurred.
 				if (result.Error != null) {
@@ -427,6 +458,12 @@ namespace DtronixJsonRpc {
 					
 					// Disconnect the client
 					Disconnect(result.Error);
+					return;
+				}
+
+				// If this is an anonymous connection, disconnect at this point.
+				if (result.AnonymousClient) {
+					Disconnect("Disconnecting anonymous connection.");
 					return;
 				}
 
