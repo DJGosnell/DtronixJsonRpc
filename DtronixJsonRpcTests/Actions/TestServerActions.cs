@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace DtronixJsonRpcTests.Actions {
@@ -26,9 +27,19 @@ namespace DtronixJsonRpcTests.Actions {
 			if (RequestResult(args, ref id)) { return await Connector.WaitForResult<bool>(id); }
 
 			return true;
-
-
 		}
+
+		[ActionMethod(JsonRpcSource.Server)]
+		public async Task<bool> LongRunningTaskCancel(TestArgs args, CancellationToken token = default(CancellationToken), string id = null) {
+			if (RequestResult(args, ref id)) { return await Connector.WaitForResult<bool>(id, token); }
+
+			await Task.Delay(3000);
+
+			return true;
+		}
+
+
+		
 
 		[ActionMethod(JsonRpcSource.Server)]
 		public async Task<bool> ReturnFalse(TestArgs args, string id = null) {

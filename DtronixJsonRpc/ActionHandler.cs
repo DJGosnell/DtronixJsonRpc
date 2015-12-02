@@ -4,6 +4,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace DtronixJsonRpc {
@@ -116,6 +117,10 @@ namespace DtronixJsonRpc {
 				} else if (called_method_info.parameter_info.Length == 2) {
 					// Two parameters means the parameters and the call ID.
 					parameters = new object[] { data["params"].ToObject(parameter_type), id };
+
+				} else if (called_method_info.parameter_info.Length == 3) {
+					// Three parameters means the parameters, the cancellation token and the call ID.
+					parameters = new object[] { data["params"].ToObject(parameter_type), default(CancellationToken), id };
 
 				} else {
 					throw new InvalidOperationException("Did not pass the minimum number of parameters.");

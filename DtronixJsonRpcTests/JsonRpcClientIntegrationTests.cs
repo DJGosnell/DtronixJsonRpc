@@ -97,6 +97,22 @@ namespace DtronixJsonRpcTests {
 		}
 
 		[Fact]
+		public async void LongRunningTaskCancel_canceles_by_token() {
+			client.OnConnect += async(sender, e) => {
+				CancellationTokenSource source = new CancellationTokenSource();
+
+				Task.Delay(1000).ContinueWith((state) => source.Cancel());
+
+				await client.Actions.TestServerActions.LongRunningTaskCancel(new TestServerActions.TestArgs(), source.Token);
+			};
+
+			server.Start();
+			client.Connect();
+
+			await StartAndWaitClient();
+		}
+
+		[Fact]
 		public async void ReturnTrueWithoutParams_call_returns_true() {
 			server.Start();
 

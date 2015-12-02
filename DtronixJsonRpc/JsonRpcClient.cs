@@ -91,6 +91,11 @@ namespace DtronixJsonRpc {
 		public JsonRpcServer<THandler> Server { get; private set; }
 
 		/// <summary>
+		/// The time that an action will wait for a response from the server.
+		/// </summary>
+		public int RequestTimeout { get; set; } = 30 * 1000;
+
+		/// <summary>
 		/// The number of milliseconds elapsed to execute a command from the client to the server.
 		/// </summary>
 		public long Ping { get; private set; } = -1;
@@ -215,16 +220,22 @@ namespace DtronixJsonRpc {
 			return Interlocked.Increment(ref _RequestId).ToString();
 		}
 
-		/// <summary>
-		/// Asynchronously waits for the result of the specified ID.  Can only have one wait per ID.
-		/// </summary>
-		/// <typeparam name="T">Type to return the result as.</typeparam>
-		/// <param name="id">ID of the request to wait on.</param>
-		/// <returns>Result of the request.</returns>
-		public async Task<T> WaitForResult<T>(string id) {
+        /// <summary>
+        /// Asynchronously waits for the result of the specified ID with an optional cancellation token.  Can only have one wait per ID.
+        /// </summary>
+        /// <typeparam name="T">Type to return the result as.</typeparam>
+        /// <param name="id">ID of the request to wait on.</param
+        /// <param name="token">Cancellation token for the awaiter.</param>
+        /// <returns>Result of the request.</returns>
+        public async Task<T> WaitForResult<T>(string id, CancellationToken token = default(CancellationToken)) {
 			ReturnResult result;
-			try {
 
+            // If a cancellation token is not provided, use the one for the client.
+            if(token == default(CancellationToken)) {
+                token = cancellation_token_source.Token;
+            }
+
+			try {
 				if (return_wait_results.TryGetValue(id, out result) == false) {
 					logger.Fatal("{0} CID {1}: Could not get wait for request ID '{2}'.", Mode, Info.Id, id);
 				}
@@ -232,7 +243,9 @@ namespace DtronixJsonRpc {
 				logger.Trace("{0} CID {1}: Waiting for result from request ID '{2}'.", Mode, Info.Id, id);
 
 				// Set the wait inside a task and set the timeouts.
-				await Task.Run(() => result.reset_event.Wait(30000, cancellation_token_source.Token));
+				if(await Task.Run(() => result.reset_event.Wait(RequestTimeout, token), token) == false) {
+					throw new TimeoutException("Connector took too long to respond to request.");
+				}
 
 				logger.Trace("{0} CID {1}: Result received for request ID '{2}'.", Mode, Info.Id, id);
 
@@ -242,8 +255,6 @@ namespace DtronixJsonRpc {
 					logger.Fatal("{0} CID {1}: Could not remove the wait for request ID '{2}'.", Mode, Info.Id, id);
 				}
 			}
-
-
 		}
 
 		/// <summary>
