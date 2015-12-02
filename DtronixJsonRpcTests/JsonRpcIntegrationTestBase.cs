@@ -18,8 +18,6 @@ namespace DtronixJsonRpcTests {
 		protected JsonRpcServer<TestActionHandler> server;
 		protected JsonRpcClient<TestActionHandler> client;
 		protected JsonSerializer serializer = new JsonSerializer();
-		protected Task server_task;
-		protected Task client_task;
 
 		protected const string AUTH_TEXT = "ArbitraryAuthText";
 		protected ITestOutputHelper output;
@@ -46,42 +44,32 @@ namespace DtronixJsonRpcTests {
 			server.OnAuthenticationVerification += (sender, e) => {
 				e.Authenticated = true;
 			};
+
+			server.OnStop += (sender, e) => {
+				wait.Set();
+			};
 		}
 
 		protected void CompleteTest() {
 			server.Stop("Test completed successfully.");
+			wait.Set();
 		}
 
 		protected void FailTest() {
 			server.Stop("Test failed.");
+			wait.Set();
 		}
 
 
 		protected async Task<bool> StartAndWaitClient(int wait_duration = 5000) {
-			bool ex_thrown = false;
+			if (await Task.Run(() => wait.WaitOne(5000)) == false) {
+				client.Disconnect("Test failed to complete within the time limitation.");
+				server.Stop("Test failed to complete within the time limitation.");
+				throw new TimeoutException("Test failed to complete within the time limitation.");
+			}
 
-			try {
-				server_task.Start();
-				client_task.Start();
-
-				if (await Task.WhenAny(server_task, Task.Delay(wait_duration)) != server_task) {
-					client.Disconnect("Test failed to complete within the time limitation.");
-					ex_thrown = true;
-					throw new TimeoutException("Test failed to complete within the time limitation.");
-				}
-
-			} finally {
-				server_task.Exception?.Handle(ex => {
-					throw ex;
-				});
-
-				client_task.Exception?.Handle(ex => {
-					throw ex;
-				});
-
-				if (ex_thrown == false && server.StopReason != "Test completed successfully.") {
-					throw new Exception("Test did not complete successfully.");
-				}
+			if (server.StopReason != "Test completed successfully.") {
+				throw new Exception("Test did not complete successfully.");
 			}
 
 			return true;

@@ -23,24 +23,18 @@ namespace DtronixJsonRpcTests {
 
 		[Fact]
 		public async void Server_sends_abstract_data_to_client() {
-			server_task = new Task(() => {
-				server.Configurations.AllowAnonymousConnections = true;
-				server.Configurations.ServerData = JToken.Parse(@"{'logo':'http://my.logo/image.png'}");
-				server.Start();
-			});
+			server.Configurations.AllowAnonymousConnections = true;
+			server.Configurations.ServerData = JToken.Parse(@"{'logo':'http://my.logo/image.png'}");
+			server.Start();
 
-			client_task = new Task(() => {
-				client.OnReceiveConnectionInformation += (sender, e) => {
-					Assert.Equal("http://my.logo/image.png", e.ServerData["logo"].ToString());
+			client.OnReceiveConnectionInformation += (sender, e) => {
+				Assert.Equal("http://my.logo/image.png", e.ServerData["logo"].ToString());
 
-					CompleteTest();
-				};
+				CompleteTest();
+			};
 
-				client.Info.Username = null;
-				client.Connect();
-			});
-
-
+			client.Info.Username = null;
+			client.Connect();
 
 			await StartAndWaitClient();
 

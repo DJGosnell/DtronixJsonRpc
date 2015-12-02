@@ -136,16 +136,14 @@ namespace DtronixJsonRpc {
 		/// <summary>
 		/// Starts listening for incoming clients.  Will listen on the same thread as the start method is called on.
 		/// </summary>
-		public void Start() {
+		/// <returns>
+		/// Returns true on successful start.
+		/// </returns>
+		public bool Start() {
+			logger.Info("Server: Starting");
 
-			try {
-				logger.Info("Server: Starting");
-
-				// Listens for clients on the bound listener.
-				listener.Start();
-			} catch (Exception) {
-				throw;
-			}
+			// Listens for clients on the bound listener.
+			listener.Start();
 
 			logger.Debug("Server: Listening for connections.");
 			IsRunning = true;
@@ -153,6 +151,14 @@ namespace DtronixJsonRpc {
 			// Invoke the event stating the server has started.
 			OnStart?.Invoke(this, this);
 
+			// Listen and wait for new incoming connections.
+			Task.Factory.StartNew(ListenerLoop, TaskCreationOptions.LongRunning, cancellation_token_source.Token);
+
+			return true;
+		}
+
+
+		private void ListenerLoop(object state) {
 			while (cancellation_token_source.IsCancellationRequested == false) {
 
 				// Gets the task for a new client to connect.
@@ -180,13 +186,7 @@ namespace DtronixJsonRpc {
 					JsonRpcClient<THandler> removed_client;
 
 					// Attempt to remove the client from the list of active clients.
-					if (clients.TryRemove(sender.Info.Id, out removed_client) == false) {
-
-						// This should not ever occur.
-						logger.Fatal("Server: Client ({0}) Failed to be removed from the list of active clients.", sender.Info.Id, e.Reason);
-						Stop("Internal server error.  Check Log");
-						return;
-					}
+					clients.TryRemove(sender.Info.Id, out removed_client);
 
 					// Stop the ping timer if no clients are connected.
 					if (clients.Count == 0) {
@@ -221,22 +221,20 @@ namespace DtronixJsonRpc {
 					};
 				}
 
-				// Add the client to the list of active clients.
-				clients.TryAdd(client_listener.Info.Id, client_listener);
+				// Connect and start listening to this client's requests.
+				if (client_listener.Connect()) {
 
-				// Connect and start listening to this client's requests on its own thread.
-				Task.Factory.StartNew(() => client_listener.Connect(), TaskCreationOptions.LongRunning);
+					// Add the client to the list of active clients if it connected.
+					clients.TryAdd(client_listener.Info.Id, client_listener);
+				}
 
 			}
 
 			// If the server is shutting down, broadcast this event to all the clients before a disconnect.
-			if (cancellation_token_source.IsCancellationRequested) {
-				EachClient(cl => cl.Send(new JsonRpcRequest("rpc." + nameof(JsonRpcClient<THandler>.OnDisconnect), "Server shutting down.")));
-			}
+			EachClient(cl => cl.Send(new JsonRpcRequest("rpc." + nameof(JsonRpcClient<THandler>.OnDisconnect), "Server shutting down.")));
 
 			logger.Info("Server: Stopped");
 		}
-
 		/// <summary>
 		/// Calls an action and passes it a connected client for each client.
 		/// </summary>
