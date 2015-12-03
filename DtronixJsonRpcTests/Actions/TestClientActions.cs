@@ -27,32 +27,32 @@ namespace DtronixJsonRpcTests.Actions {
 			if (Notify(pause_time, ref id)) {
 				Thread.Sleep(pause_time);
 			}
+		}
+
+
+		/*[ActionMethod(JsonRpcSource.Client)]
+		public void Test(TestArgs args, bool received = false) {
+			if (ReturnRemote(args, received)) {
+				//((BaseTest)Connector.DataObject).
+				//MethodCalled?.Invoke(this, new TestClientMethodCalledEventArgs<object>(args, GetType()));
+			}
 
 		}
 
-/*[ActionMethod(JsonRpcSource.Client)]
-public void Test(TestArgs args, bool received = false) {
-	if (ReturnRemote(args, received)) {
-		//((BaseTest)Connector.DataObject).
-		//MethodCalled?.Invoke(this, new TestClientMethodCalledEventArgs<object>(args, GetType()));
-	}
-
-}
-
-[ActionMethod(JsonRpcSource.Client)]
-public void Noop(TestArgs args, bool received = false) {
-	if (ReturnRemote(args, received)) {
-	}
-}
+		[ActionMethod(JsonRpcSource.Client)]
+		public void Noop(TestArgs args, bool received = false) {
+			if (ReturnRemote(args, received)) {
+			}
+		}
 
 
 
-[ActionMethod(JsonRpcSource.Client)]
-public void Test2(TestArgs args, bool received = false) {
-	if (ReturnRemote(args, received)) {
-		//MethodCalled?.Invoke(this, new TestClientMethodCalledEventArgs<object>(args, GetType()));
-	}
+		[ActionMethod(JsonRpcSource.Client)]
+		public void Test2(TestArgs args, bool received = false) {
+			if (ReturnRemote(args, received)) {
+				//MethodCalled?.Invoke(this, new TestClientMethodCalledEventArgs<object>(args, GetType()));
+			}
 
-}*/
+		}*/
 	}
 }

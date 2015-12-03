@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 namespace DtronixJsonRpcTests.Actions {
 	public class TestServerActions : JsonRpcActions<TestActionHandler> {
 
+		public bool IsCanceled { get; set; } = false;
 		new public JsonRpcClient<TestActionHandler> Connector { get { return base.Connector; } }
 
 		public TestServerActions(JsonRpcClient<TestActionHandler> connector, [CallerMemberName] string member_name = "") : base(connector, member_name) {
@@ -33,13 +34,27 @@ namespace DtronixJsonRpcTests.Actions {
 		public async Task<bool> LongRunningTaskCancel(TestArgs args, CancellationToken token = default(CancellationToken), string id = null) {
 			if (RequestResult(args, ref id)) { return await Connector.WaitForResult<bool>(id, token); }
 
-			await Task.Delay(3000);
+			try {
+				await Task.Delay(20000, token);
+			} catch (OperationCanceledException) {
+				IsCanceled = true;
+				throw;
+			}
 
 			return true;
 		}
 
 
-		
+		[ActionMethod(JsonRpcSource.Server)]
+		public async Task<bool> CanceledTask(string id = null) {
+			if (RequestResult(null, ref id)) { return await Connector.WaitForResult<bool>(id); }
+
+			return Connector.Actions.TestServerActions.IsCanceled;
+
+		}
+
+
+
 
 		[ActionMethod(JsonRpcSource.Server)]
 		public async Task<bool> ReturnFalse(TestArgs args, string id = null) {

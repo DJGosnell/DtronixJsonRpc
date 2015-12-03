@@ -62,7 +62,7 @@ namespace DtronixJsonRpcTests {
 
 
 		protected async Task<bool> StartAndWaitClient(int wait_duration = 5000) {
-			if (await Task.Run(() => wait.WaitOne(5000)) == false) {
+			if (await Task.Run(() => wait.WaitOne(wait_duration)) == false) {
 				client.Disconnect("Test failed to complete within the time limitation.");
 				server.Stop("Test failed to complete within the time limitation.");
 				throw new TimeoutException("Test failed to complete within the time limitation.");

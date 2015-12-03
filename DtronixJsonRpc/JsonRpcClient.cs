@@ -136,10 +136,7 @@ namespace DtronixJsonRpc {
 			get { return _RequestId; }
 		}
 
-
-
 		private readonly CancellationTokenSource cancellation_token_source = new CancellationTokenSource();
-
 		// All streams and stream wrappers used in this client.
 		private TcpClient client;
 		private NetworkStream base_stream;
@@ -220,20 +217,20 @@ namespace DtronixJsonRpc {
 			return Interlocked.Increment(ref _RequestId).ToString();
 		}
 
-        /// <summary>
-        /// Asynchronously waits for the result of the specified ID with an optional cancellation token.  Can only have one wait per ID.
-        /// </summary>
-        /// <typeparam name="T">Type to return the result as.</typeparam>
-        /// <param name="id">ID of the request to wait on.</param
-        /// <param name="token">Cancellation token for the awaiter.</param>
-        /// <returns>Result of the request.</returns>
-        public async Task<T> WaitForResult<T>(string id, CancellationToken token = default(CancellationToken)) {
+		/// <summary>
+		/// Asynchronously waits for the result of the specified ID with an optional cancellation token.  Can only have one wait per ID.
+		/// </summary>
+		/// <typeparam name="T">Type to return the result as.</typeparam>
+		/// <param name="id">ID of the request to wait on.</param
+		/// <param name="token">Cancellation token for the awaiter.</param>
+		/// <returns>Result of the request.</returns>
+		public async Task<T> WaitForResult<T>(string id, CancellationToken token = default(CancellationToken)) {
 			ReturnResult result;
 
-            // If a cancellation token is not provided, use the one for the client.
-            if(token == default(CancellationToken)) {
-                token = cancellation_token_source.Token;
-            }
+			// If a cancellation token is not provided, use the one for the client.
+			if (token == default(CancellationToken)) {
+				token = cancellation_token_source.Token;
+			}
 
 			try {
 				if (return_wait_results.TryGetValue(id, out result) == false) {
@@ -243,13 +240,18 @@ namespace DtronixJsonRpc {
 				logger.Trace("{0} CID {1}: Waiting for result from request ID '{2}'.", Mode, Info.Id, id);
 
 				// Set the wait inside a task and set the timeouts.
-				if(await Task.Run(() => result.reset_event.Wait(RequestTimeout, token), token) == false) {
+				if (await Task.Run(() => result.reset_event.Wait(RequestTimeout, token), token) == false) {
 					throw new TimeoutException("Connector took too long to respond to request.");
 				}
 
 				logger.Trace("{0} CID {1}: Result received for request ID '{2}'.", Mode, Info.Id, id);
 
 				return result.value["result"].ToObject<T>();
+			} catch (OperationCanceledException e) {
+				logger.Debug("{0} CID {1}: Request ID '{2}' has been requested to be canceled on the remote connection.", Mode, Info.Id, id);
+				Send(new JsonRpcRequest("rpc.cancel-action", id));
+				throw e;
+
 			} finally {
 				if (return_wait_results.TryRemove(id, out result) == false) {
 					logger.Fatal("{0} CID {1}: Could not remove the wait for request ID '{2}'.", Mode, Info.Id, id);
@@ -285,7 +287,7 @@ namespace DtronixJsonRpc {
 				}
 
 				// Check to ensure the client should connect.
-				if (Info.Username != null && 
+				if (Info.Username != null &&
 					Server.Configurations.AllowDuplicateUsernames == false &&
 					Server.Clients.Values.Any(cli => cli.Info.Id != Info.Id && cli.Info.Username == Info.Username)) {
 					return new ClientConnectionResponse("Client connected with duplicate username.");
@@ -539,7 +541,6 @@ namespace DtronixJsonRpc {
 					if (data == null) {
 						return;
 					}
-
 					// Determine if we have and ID.
 					string id = data["id"]?.ToObject<string>();
 
@@ -574,7 +575,6 @@ namespace DtronixJsonRpc {
 					}
 
 					try {
-
 						// If the method starts with a "rpc", the method is a special method and handled internally.
 						if (method.StartsWith("rpc.")) {
 							ExecuteExtentionAction(method, data);
@@ -582,10 +582,13 @@ namespace DtronixJsonRpc {
 							Actions.ExecuteAction(method, data, id);
 						}
 
+					} catch (OperationCanceledException e) {
+						string s = "";
 					} catch (Exception e) {
 						logger.Error(e, "{0} CID {1}: Called action threw exception. Exception: {2}", Mode, Info.Id, e.ToString());
 						throw e;
 					}
+
 				}
 
 			} catch (SocketException e) {
@@ -629,7 +632,22 @@ namespace DtronixJsonRpc {
 					Disconnect(clients_info[0].DisconnectReason, (Mode == JsonRpcSource.Client) ? JsonRpcSource.Server : JsonRpcSource.Client, SocketError.Success);
 				}
 
-			}  else if (method == "rpc.ping") {
+			} else if (method == "rpc.cancel-action") {
+
+				// Method called to cancel an actively running action on this connector.
+				var id = data["params"].ToObject<string>();
+
+				logger.Debug("{0} CID {1}: Request ID '{2}' has been requested to be canceled.", Mode, Info.Id, id);
+
+				CancellationTokenSource source;
+				if (Actions.active_cancellable_actions.TryGetValue(id, out source)) {
+					logger.Debug("{0} CID {1}: Request ID '{2}' canceled.", Mode, Info.Id, id);
+					source.Cancel();
+				} else {
+					logger.Debug("{0} CID {1}: Request ID '{2}' not found.", Mode, Info.Id, id);
+				}
+
+			} else if (method == "rpc.ping") {
 
 				// Method called to determine the latency of the connection.
 				// Server pings client, client responds immediately, server sends the latency back to the client.
