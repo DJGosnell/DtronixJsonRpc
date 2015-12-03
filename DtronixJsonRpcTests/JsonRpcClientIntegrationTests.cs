@@ -16,9 +16,9 @@ using Xunit.Abstractions;
 namespace DtronixJsonRpcTests {
 	public class JsonRpcClientIntegrationTests : JsonRpcIntegrationTestBase {
 
-		
 
-		public JsonRpcClientIntegrationTests(ITestOutputHelper output) : base(output) {	}
+
+		public JsonRpcClientIntegrationTests(ITestOutputHelper output) : base(output) { }
 
 		[Fact]
 		public async void ReturnTrue_multiple_calls_succeed() {
@@ -98,12 +98,17 @@ namespace DtronixJsonRpcTests {
 
 		[Fact]
 		public async void LongRunningTaskCancel_canceles_by_token() {
-			client.OnConnect += async(sender, e) => {
+			client.OnConnect += async (sender, e) => {
 				CancellationTokenSource source = new CancellationTokenSource();
 
-				Task.Delay(1000).ContinueWith((state) => source.Cancel());
+				Task.Run(async () => {
+					await Task.Delay(200);
+					source.Cancel();
+				});
 
-				await client.Actions.TestServerActions.LongRunningTaskCancel(new TestServerActions.TestArgs(), source.Token);
+				await Assert.ThrowsAsync<OperationCanceledException>(async () => await client.Actions.TestServerActions.LongRunningTaskCancel(new TestServerActions.TestArgs(), source.Token));
+				CompleteTest();
+
 			};
 
 			server.Start();
@@ -205,7 +210,7 @@ namespace DtronixJsonRpcTests {
 			await StartAndWaitClient();
 		}
 
-	
+
 
 	}
 }
