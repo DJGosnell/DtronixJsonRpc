@@ -16,9 +16,9 @@ using Xunit.Abstractions;
 namespace DtronixJsonRpcTests {
 	public class JsonRpcClientIntegrationTests : JsonRpcIntegrationTestBase {
 
-		
 
-		public JsonRpcClientIntegrationTests(ITestOutputHelper output) : base(output) {	}
+
+		public JsonRpcClientIntegrationTests(ITestOutputHelper output) : base(output) { }
 
 		[Fact]
 		public async void ReturnTrue_multiple_calls_succeed() {
@@ -97,6 +97,54 @@ namespace DtronixJsonRpcTests {
 		}
 
 		[Fact]
+		public async void LongRunningTaskCancel_canceles_by_token() {
+			client.OnConnect += async (sender, e) => {
+				CancellationTokenSource source = new CancellationTokenSource();
+
+				Task.Run(async () => {
+					await Task.Delay(200);
+					source.Cancel();
+				});
+
+				await Assert.ThrowsAsync<OperationCanceledException>(async () => await client.Actions.TestServerActions.LongRunningTaskCancel(new TestServerActions.TestArgs(), source.Token));
+				CompleteTest();
+
+			};
+
+			server.Start();
+			client.Connect();
+
+			await StartAndWaitClient();
+		}
+
+		[Fact]
+		public async void LongRunningTaskCancel_canceles_on_remote_by_token() {
+			client.OnConnect += async (sender, e) => {
+				CancellationTokenSource source = new CancellationTokenSource();
+
+				Task.Run(async () => {
+					await Task.Delay(250);
+					source.Cancel();
+
+					await Task.Delay(250);
+					bool result = await client.Actions.TestServerActions.CanceledTask();
+					Assert.True(result);
+					CompleteTest();
+				});
+
+
+				Assert.ThrowsAsync<OperationCanceledException>(async () => await client.Actions.TestServerActions.LongRunningTaskCancel(new TestServerActions.TestArgs(), source.Token));
+
+
+			};
+
+			server.Start();
+			client.Connect();
+
+			await StartAndWaitClient();
+		}
+
+		[Fact]
 		public async void ReturnTrueWithoutParams_call_returns_true() {
 			server.Start();
 
@@ -149,8 +197,15 @@ namespace DtronixJsonRpcTests {
 			server.Configurations.PingFrequency = 250;
 			server.Configurations.PingTimeoutDisconnectTime = 500;
 			server = new JsonRpcServer<TestActionHandler>(server.Configurations);
+
+
+
 			server.OnClientConnect += (sender, e) => {
-				e.Client.Actions.TestClientActions.BlockThread(2000);
+
+				// Make the remote client ignore all incoming requests.
+				e.Client.OnDataReceived += (s2, e2) => {
+					e2.Handled = true;
+				};
 			};
 
 			server.OnClientDisconnect += (sender, e) => {
@@ -165,7 +220,7 @@ namespace DtronixJsonRpcTests {
 		}
 
 		[Fact]
-		public async void Ping_does_not_times_out() {
+		public async void Ping_does_not_time_out() {
 			server.Configurations.PingFrequency = 250;
 			server.Configurations.PingTimeoutDisconnectTime = 500;
 
@@ -189,7 +244,7 @@ namespace DtronixJsonRpcTests {
 			await StartAndWaitClient();
 		}
 
-	
+
 
 	}
 }

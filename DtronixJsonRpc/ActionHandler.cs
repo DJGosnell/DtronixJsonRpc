@@ -4,6 +4,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace DtronixJsonRpc {
@@ -25,6 +26,7 @@ namespace DtronixJsonRpc {
 	public abstract class ActionHandler<THandler>
 		where THandler : ActionHandler<THandler>, new() {
 
+
 		/// <summary>
 		/// Version of this client/server.
 		/// </summary>
@@ -45,10 +47,11 @@ namespace DtronixJsonRpc {
 
 		private Dictionary<string, object> instance_cache = new Dictionary<string, object>();
 
-
+		internal ConcurrentDictionary<string, CancellationTokenSource> active_cancellable_actions = new ConcurrentDictionary<string, CancellationTokenSource>();
 
 		public void ExecuteAction(string method, JToken data, string id) {
 			CalledMethodInfo called_method_info;
+			CancellationTokenSource cancel_source = new CancellationTokenSource();
 			object instance_class;
 
 			var call_parts = method.Split('.');
@@ -107,6 +110,8 @@ namespace DtronixJsonRpc {
 			}
 
 			try {
+
+
 				// Determine what kind of parameters we have.
 				object[] parameters;
 				if (called_method_info.parameter_info.Length == 1) {
@@ -117,23 +122,41 @@ namespace DtronixJsonRpc {
 					// Two parameters means the parameters and the call ID.
 					parameters = new object[] { data["params"].ToObject(parameter_type), id };
 
+				} else if (called_method_info.parameter_info.Length == 3) {
+					// Three parameters means the parameters, the cancellation token and the call ID.
+
+					// Add it to the list of active actions.
+					active_cancellable_actions.TryAdd(id, cancel_source);
+
+					parameters = new object[] { data["params"].ToObject(parameter_type), cancel_source.Token, id };
+
 				} else {
 					throw new InvalidOperationException("Did not pass the minimum number of parameters.");
 				}
 
-				// Invoke the method and see if we have a return value.
-				object result = called_method_info.method_info.Invoke(instance_class, parameters);
+				Task.Run(() => {
+					try {
+						// Invoke the method and see if we have a return value.
+						object result = called_method_info.method_info.Invoke(instance_class, parameters);
 
-				// If the method return value was not void, then send the result back to the other party.
-				if (called_method_info.method_info.ReturnType != typeof(void)) {
-					Connector.Send(new JsonRpcRequest() {
-						Result = ((dynamic)result).Result,
-						Id = id
-					});
-				}
+						// If the method return value was not void, then send the result back to the other party.
+						if (called_method_info.method_info.ReturnType != typeof(void) && ((dynamic)result).Exception == null) {
+							Connector.Send(new JsonRpcRequest() {
+								Result = ((dynamic)result).Result,
+								Id = id
+							});
+						}
+					} finally {
+
+						// Try to remove the cancellation source from the list.
+						CancellationTokenSource source;
+						active_cancellable_actions.TryRemove(id, out source);
+					}
+				});
 
 			} catch (Exception e) {
 				throw e;
+
 			}
 
 		}
