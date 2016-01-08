@@ -1,4 +1,6 @@
-﻿using NLog;
+﻿using NetMQ;
+using NetMQ.Sockets;
+using NLog;
 using System;
 using System.Collections.Concurrent;
 using System.Net.Sockets;
@@ -66,15 +68,9 @@ namespace DtronixJsonRpc {
 		/// </summary>
 		public JsonRpcServerConfigurations Configurations { get; }
 
-		private ConcurrentDictionary<int, JsonRpcClient<THandler>> clients = new ConcurrentDictionary<int, JsonRpcClient<THandler>>();
-		/// <summary>
-		/// Gets the dictionary with the active clients and their IDs.
-		/// </summary>
-		public ConcurrentDictionary<int, JsonRpcClient<THandler>> Clients {
-			get {
-				return clients;
-			}
-		}
+		private NetMQContext context;
+
+		private RouterSocket router_socket;
 
 		private bool _IsStopping = false;
 		/// <summary>
@@ -85,18 +81,6 @@ namespace DtronixJsonRpc {
 		}
 
 		private readonly CancellationTokenSource cancellation_token_source;
-
-		/// <summary>
-		/// Internal listener for clients.
-		/// </summary>
-		private readonly TcpListener listener;
-
-		/// <summary>
-		/// Last ID used for connected clients.
-		/// </summary>
-		private int last_client_id = 0;
-
-		private System.Timers.Timer ping_timer;
 
 		/// <summary>
 		/// Creates a JsonRpcServer with default configurations.
@@ -111,11 +95,11 @@ namespace DtronixJsonRpc {
 		public JsonRpcServer(JsonRpcServerConfigurations configurations) {
 			Configurations = configurations;
 			cancellation_token_source = new CancellationTokenSource();
-			listener = new TcpListener(configurations.BindingAddress, configurations.BindingPort);
 
-			ping_timer = new System.Timers.Timer(Configurations.PingFrequency);
 
-			ping_timer.Elapsed += (sender, e) => {
+			context = NetMQContext.Create();
+
+			/*ping_timer.Elapsed += (sender, e) => {
 				EachClient(cl => {
 					if (cl.ping_stopwatch.IsRunning) {
 						if (cl.ping_stopwatch.ElapsedMilliseconds > configurations.PingTimeoutDisconnectTime) {
@@ -129,7 +113,7 @@ namespace DtronixJsonRpc {
 						cl.Send(new JsonRpcRequest("rpc.ping", JsonRpcSource.Server));
 					}
 				});
-			};
+			};*/
 		}
 
 
@@ -142,23 +126,28 @@ namespace DtronixJsonRpc {
 		public bool Start() {
 			logger.Info("Server: Starting");
 
-			// Listens for clients on the bound listener.
-			listener.Start();
-
 			logger.Debug("Server: Listening for connections.");
-			IsRunning = true;
+
+			router_socket = context.CreateRouterSocket();
+
+			var poller = new Poller(router_socket);
+
+			router_socket.ReceiveReady += (s, a) => {
+				a.Socket.ReceiveString();
+			};
+
+			poller.PollTillCancelledNonBlocking();
 
 			// Invoke the event stating the server has started.
 			OnStart?.Invoke(this, this);
-
-			// Listen and wait for new incoming connections.
-			Task.Factory.StartNew(ListenerLoop, TaskCreationOptions.LongRunning, cancellation_token_source.Token);
 
 			return true;
 		}
 
 
 		private void ListenerLoop(object state) {
+
+
 			while (cancellation_token_source.IsCancellationRequested == false) {
 
 				// Gets the task for a new client to connect.
