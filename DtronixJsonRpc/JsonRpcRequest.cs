@@ -44,7 +44,7 @@ namespace DtronixJsonRpc {
 		/// The value for this member MUST be an Object as defined in section 5.1.
 		/// </summary>
 		[JsonProperty("error")]
-		public JsonRpcError Error { get; set; }
+		public JsonRpcAppException Exception { get; set; }
 
 		/// <summary>
 		/// (REQUEST ONLY)

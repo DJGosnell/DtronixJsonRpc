@@ -20,7 +20,7 @@
         <xs:documentation>Print internal NLog messages to the console. Default value is: false</xs:documentation>
       </xs:annotation>
     </xs:attribute>
-    <xs:attribute name="internalLogToConsoleError" type="xs:boolean">
+    <xs:attribute name="internalLogToConsoleException" type="xs:boolean">
       <xs:annotation>
         <xs:documentation>Print internal NLog messages to the console error output. Default value is: false</xs:documentation>
       </xs:annotation>
@@ -153,7 +153,7 @@
       <xs:enumeration value="Debug" />
       <xs:enumeration value="Info" />
       <xs:enumeration value="Warn" />
-      <xs:enumeration value="Error" />
+      <xs:enumeration value="Exception" />
       <xs:enumeration value="Fatal" />
     </xs:restriction>
   </xs:simpleType>
@@ -168,7 +168,7 @@
   </xs:simpleType>
   <xs:simpleType name="NLogLevelList">
     <xs:restriction base="xs:string">
-      <xs:pattern value="(|Trace|Debug|Info|Warn|Error|Fatal)(,(Trace|Debug|Info|Warn|Error|Fatal))*" />
+      <xs:pattern value="(|Trace|Debug|Info|Warn|Exception|Fatal)(,(Trace|Debug|Info|Warn|Exception|Fatal))*" />
     </xs:restriction>
   </xs:simpleType>
   <xs:complexType name="NLogInclude">
@@ -177,7 +177,7 @@
         <xs:documentation>Name of the file to be included. The name is relative to the name of the current config file.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
-    <xs:attribute name="ignoreErrors" type="xs:boolean" use="optional" default="false">
+    <xs:attribute name="ignoreExceptions" type="xs:boolean" use="optional" default="false">
       <xs:annotation>
         <xs:documentation>Ignore any errors in the include file.</xs:documentation>
       </xs:annotation>
@@ -493,7 +493,7 @@
   </xs:simpleType>
   <xs:simpleType name="NLog.Targets.NetworkTargetOverflowAction">
     <xs:restriction base="xs:string">
-      <xs:enumeration value="Error" />
+      <xs:enumeration value="Exception" />
       <xs:enumeration value="Split" />
       <xs:enumeration value="Discard" />
     </xs:restriction>

@@ -11,20 +11,9 @@ namespace DtronixJsonRpc {
 	/// </summary>
 	/// <typeparam name="THandler">Action Handler to contain all action class instances.</typeparam>
 	public class JsonRpcServer<THandler> : IDisposable
-		where THandler : ActionHandler<THandler>, new() {
+		where THandler : new() {
 
 		private static Logger logger = LogManager.GetCurrentClassLogger();
-
-		/// <summary>
-		/// Event called to authenticate the data a client has passed.
-		/// </summary>
-		/// <remarks>
-		/// The data property has a max length of 2048 characters.
-		/// The Data property is the raw data that the client has sent to the server.
-		/// If the client succeeds in the challenge, set the Authenticated property to true.
-		/// If the client fails in the challenge, set the Authenticated property to false and set the FailureReason property to the reason the authentication failed.
-		/// </remarks>
-		public event EventHandler<JsonRpcClient<THandler>, ConnectorAuthenticationEventArgs> OnAuthenticationVerification;
 
 		/// <summary>
 		/// Event called when the server stops listening for clients.
@@ -35,16 +24,6 @@ namespace DtronixJsonRpc {
 		/// Event called when the server starts listening for clients.
 		/// </summary>
 		public event EventHandler<JsonRpcServer<THandler>> OnStart;
-
-		/// <summary>
-		/// Event called when a new client successfully connects to the server.
-		/// </summary>
-		public event EventHandler<JsonRpcServer<THandler>, ClientConnectEventArgs<THandler>> OnClientConnect;
-
-		/// <summary>
-		/// Event called when the client disconnects. Provides the reason for the disconnect.
-		/// </summary>
-		public event EventHandler<JsonRpcServer<THandler>, ClientDisconnectEventArgs<THandler>> OnClientDisconnect;
 
 		/// <summary>
 		/// Gets the status of whether the server is actively listening for clients or not.
@@ -65,16 +44,6 @@ namespace DtronixJsonRpc {
 		/// Current configuration of the server.
 		/// </summary>
 		public JsonRpcServerConfigurations Configurations { get; }
-
-		private ConcurrentDictionary<int, JsonRpcClient<THandler>> clients = new ConcurrentDictionary<int, JsonRpcClient<THandler>>();
-		/// <summary>
-		/// Gets the dictionary with the active clients and their IDs.
-		/// </summary>
-		public ConcurrentDictionary<int, JsonRpcClient<THandler>> Clients {
-			get {
-				return clients;
-			}
-		}
 
 		private bool _IsStopping = false;
 		/// <summary>

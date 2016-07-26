@@ -63,54 +63,7 @@ namespace DtronixJsonRpc {
 		/// 
 		/// Default: 15 seconds.
 		/// </summary>
-		public int PingTimeoutDisconnectTime { get; set; } = 15 * 1000;
-
-		/// <summary>
-		/// If set to true, when the client attempts to connect, it will be required to have the same version number as the server.
-		/// 
-		/// Default: true;
-		/// </summary>
-		public bool RequireSameVersion { get; set; } = true;
-
-
-		/// <summary>
-		/// If set to false, when the client attempts to connect, it's username will be checked along the other connected clients.
-		/// If there is a duplicate username, the new client will be disconnected.
-		/// 
-		/// Default: false;
-		/// </summary>
-		public bool AllowDuplicateUsernames { get; set; } = false;
-
-
-		/// <summary>
-		/// If set to true, a client will be allowed to connect and get server information then disconnect.
-		/// An anonymous user can not send any information to the server.
-		/// 
-		/// Default: false.
-		/// </summary>
-		public bool AllowAnonymousConnections { get; set; } = false;
-
-
-		/// <summary>
-		/// Gets or sets the amount of time a client will wait for a send operation to complete successfully in milliseconds.
-		/// 
-		/// Default: 10 seconds.
-		/// </summary>
-		public int ClientSendTimeout { get; set; } = 10 * 1000;
-
-		/// <summary>
-		/// Name of the server. Used for connection informational purposes only.
-		/// 
-		/// Default: dtx-jsonrpc.
-		/// </summary>
-		public string ServerName { get; set; } = "dtx-jsonrpc";
-
-		/// <summary>
-		/// Abstract data that will be sent to the client on each connection request. (Description, Logo, etc...)
-		/// 
-		/// Default: null.
-		/// </summary>
-		public JToken ServerData { get; set; } = null;
+		public int PingTimeoutDisconnectTime { get; set; } = 30 * 1000;
 	}
 
 

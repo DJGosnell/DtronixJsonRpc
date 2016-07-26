@@ -30,12 +30,12 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Newtonsoft.Json, Version=7.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.7.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+    <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.9.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="NLog, Version=4.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c, processorArchitecture=MSIL">
-      <HintPath>..\packages\NLog.4.1.2\lib\net45\NLog.dll</HintPath>
+      <HintPath>..\packages\NLog.4.3.6\lib\net45\NLog.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
@@ -48,35 +48,23 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ActionHandler.cs" />
-    <Compile Include="AuthenticationFailureEventArgs.cs" />
-    <Compile Include="ClientConnectEventArgs.cs" />
-    <Compile Include="ClientConnectionRequest.cs" />
-    <Compile Include="ClientConnectionResponse.cs" />
     <Compile Include="ClientStatus.cs" />
-    <Compile Include="ConnectedClientChangedEventArgs.cs" />
-    <Compile Include="ConnectorAuthenticationEventArgs.cs" />
-    <Compile Include="JsonRpcError.cs" />
+    <Compile Include="IJsonRpcService.cs" />
+    <Compile Include="JsonRpcAppException.cs" />
     <Compile Include="JsonRpcRequest.cs" />
-    <Compile Include="ActionMethodAttribute.cs" />
     <Compile Include="JsonRpcActions.cs" />
-    <Compile Include="ClientInfo.cs" />
-    <Compile Include="ActionMethodCallEventArgs.cs" />
     <Compile Include="JsonRpcServerConfigurations.cs" />
-    <Compile Include="OnDataReceivedEventArgs.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="JsonRpcSource.cs" />
     <Compile Include="JsonRpcClient.cs" />
     <Compile Include="JsonRpcServer.cs" />
-    <Compile Include="ClientDisconnectEventArgs.cs" />
-    <Compile Include="ReceiveServerInformationEventArgs.cs" />
-    <Compile Include="ServerInfo.cs" />
     <Compile Include="Utilities.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="NLog.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+  <ItemGroup>
     <None Include="NLog.xsd">
       <SubType>Designer</SubType>
     </None>
