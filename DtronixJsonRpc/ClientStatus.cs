@@ -3,9 +3,7 @@
 		Unset = 1 << 0,
 		Connected = 1 << 1,
 		Connecting = 1 << 2,
-		Authorized = 1 << 3,
-		Disconnected = 1 << 4,
-		Disconnecting = 1 << 5,
-		Away = 1 << 6,
+		Disconnected = 1 << 3,
+		Disconnecting = 1 << 4
 	}
 }

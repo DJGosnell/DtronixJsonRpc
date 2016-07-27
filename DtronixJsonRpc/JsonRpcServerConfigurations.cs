@@ -23,7 +23,7 @@ namespace DtronixJsonRpc {
 		/// Sets the interface to bind the server instance on.
 		/// Default: Listens on all interfaces.
 		/// </summary>
-		public IPAddress BindingAddress { get; set; } = IPAddress.Any;
+		public string BindingAddress { get; set; } = "tcp://127.0.0.1:2828";
 
 		/// <summary>
 		/// Sets the port to bind the server instance on. 
