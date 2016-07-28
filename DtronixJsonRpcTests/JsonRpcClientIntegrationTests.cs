@@ -2,6 +2,7 @@
 using Newtonsoft.Json.Bson;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -9,6 +10,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AsyncIO;
+using DtronixJsonRpc.MessageQueue;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -20,42 +22,68 @@ namespace DtronixJsonRpcTests {
 		public JsonRpcClientIntegrationTests(ITestOutputHelper output) { }
 
 		[Fact]
-		public async void Ping_does_not_time_out() {
-			CompletionPort completionPort = CompletionPort.Create();
+		public async void Client_connects_to_server() {
+			var server = new MQServer(new MQServer.Config());
+			server.Start();
 
-			AutoResetEvent listenerEvent = new AutoResetEvent(false);
-			AutoResetEvent clientEvent = new AutoResetEvent(false);
-			AutoResetEvent serverEvent = new AutoResetEvent(false);
+			Thread.Sleep(500);
+			var client = new MQClient();
 
-			AsyncSocket listener = AsyncSocket.Create(AddressFamily.InterNetwork,
-				SocketType.Stream, ProtocolType.Tcp);
-			completionPort.AssociateSocket(listener, listenerEvent);
+			client.Send();
 
-			AsyncSocket server = AsyncSocket.Create(AddressFamily.InterNetwork,
-				SocketType.Stream, ProtocolType.Tcp);
-			completionPort.AssociateSocket(server, serverEvent);
 
-			AsyncSocket client = AsyncSocket.Create(AddressFamily.InterNetwork,
-				SocketType.Stream, ProtocolType.Tcp);
-			completionPort.AssociateSocket(client, clientEvent);
 
-			Task.Factory.StartNew(() =>
-			{
-				CompletionStatus completionStatus;
+			Thread.Sleep(5000);
+		}
 
-				while (true) {
-					var result = completionPort.GetQueuedCompletionStatus(-1, out completionStatus);
 
-					if (result) {
-						Console.WriteLine("{0} {1} {2}", completionStatus.SocketError,
+		/*[Fact]
+			public async void Ping_does_not_time_out() {
+				CompletionPort completionPort = CompletionPort.Create();
+
+				AutoResetEvent listenerEvent = new AutoResetEvent(false);
+				AutoResetEvent clientEvent = new AutoResetEvent(false);
+				AutoResetEvent serverEvent = new AutoResetEvent(false);
+
+				completionPort.Signal();
+
+				AsyncSocket listener = AsyncSocket.Create(AddressFamily.InterNetwork,
+					SocketType.Stream, ProtocolType.Tcp);
+				completionPort.AssociateSocket(listener, listenerEvent);
+
+				AsyncSocket server = AsyncSocket.Create(AddressFamily.InterNetwork,
+					SocketType.Stream, ProtocolType.Tcp);
+				completionPort.AssociateSocket(server, serverEvent);
+
+				AsyncSocket client = AsyncSocket.Create(AddressFamily.InterNetwork,
+					SocketType.Stream, ProtocolType.Tcp);
+				completionPort.AssociateSocket(client, clientEvent);
+
+				Task.Factory.StartNew(() =>
+				{
+					CompletionStatus[] completionStatus = new CompletionStatus[40];
+
+					while (true) {
+						int removed;
+						if (!completionPort.GetMultipleQueuedCompletionStatus(-1, completionStatus, out removed))
+							continue;
+
+						for (int i = 0; i < removed; i++) {
+							try {
+
+
+							} catch { }
+						}
+
+						/*Debug.WriteLine("{0} {1} {2}", completionStatus.SocketError,
 							completionStatus.OperationType, completionStatus.BytesTransferred);
 
 						if (completionStatus.State != null) {
 							AutoResetEvent resetEvent = (AutoResetEvent)completionStatus.State;
 							resetEvent.Set();
 						}
-					}
-				}
+
+		}
 			});
 
 			listener.Bind(IPAddress.Any, 5555);
@@ -63,13 +91,10 @@ namespace DtronixJsonRpcTests {
 
 			client.Connect("localhost", 5555);
 
-			listener.Accept(server);
+			listener.GetAcceptedSocket();
 
 
-			listenerEvent.WaitOne();
-			clientEvent.WaitOne();
-
-			byte[] sendBuffer = new byte[1] { 2 };
+			byte[] sendBuffer = new byte[] { 2 };
 			byte[] recvBuffer = new byte[1];
 
 			client.Send(sendBuffer);
@@ -81,9 +106,9 @@ namespace DtronixJsonRpcTests {
 			server.Dispose();
 			client.Dispose();
 
-		}
+		} */
 
-
+		/*
 		private void Loop() {
 			var completionStatuses = new CompletionStatus[CompletionStatusArraySize];
 
@@ -129,7 +154,7 @@ namespace DtronixJsonRpcTests {
 					} catch (TerminatingException) { }
 				}
 			}
-		}
+		}*/
 
 
 

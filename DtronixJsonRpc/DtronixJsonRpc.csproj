@@ -39,11 +39,16 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="NLog, Version=4.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c, processorArchitecture=MSIL">
-      <HintPath>..\packages\NLog.4.3.6\lib\net45\NLog.dll</HintPath>
+      <HintPath>..\packages\NLog.4.4.0-betaV15\lib\net45\NLog.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.ServiceModel" />
+    <Reference Include="System.Transactions" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -52,15 +57,21 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ClientStatus.cs" />
-    <Compile Include="IJsonRpcService.cs" />
-    <Compile Include="JsonRpcAppException.cs" />
-    <Compile Include="JsonRpcRequest.cs" />
-    <Compile Include="JsonRpcActions.cs" />
-    <Compile Include="JsonRpcServerConfigurations.cs" />
+    <None Include="ClientStatus.cs" />
+    <None Include="IJsonRpcService.cs" />
+    <None Include="JsonRpcAppException.cs" />
+    <None Include="JsonRpcRequest.cs" />
+    <None Include="JsonRpcActions.cs" />
+    <None Include="JsonRpcServerConfigurations.cs" />
+    <Compile Include="MessageQueue\MQFrame.cs" />
+    <Compile Include="MessageQueue\MQMailbox.cs" />
+    <Compile Include="MessageQueue\MQMessage.cs" />
+    <Compile Include="MessageQueue\MQIOWorker.cs" />
+    <Compile Include="MessageQueue\MQClient.cs" />
+    <Compile Include="MessageQueue\MQServer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="JsonRpcClient.cs" />
-    <Compile Include="JsonRpcServer.cs" />
+    <None Include="JsonRpcClient.cs" />
+    <None Include="JsonRpcServer.cs" />
     <Compile Include="Utilities.cs" />
   </ItemGroup>
   <ItemGroup>
