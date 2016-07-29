@@ -29,6 +29,8 @@ namespace DtronixJsonRpcTests {
 			Thread.Sleep(500);
 			var client = new MQClient();
 
+
+			Thread.Sleep(4000);
 			client.Send();
 
 

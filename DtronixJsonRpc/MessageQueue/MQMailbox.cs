@@ -5,6 +5,11 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace DtronixJsonRpc.MessageQueue {
-	class MQMailbox {
+	public class MQMailbox {
+		public MQMailbox() {
+			
+		}
+
+
 	}
 }

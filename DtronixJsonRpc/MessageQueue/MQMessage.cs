@@ -5,6 +5,6 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace DtronixJsonRpc.MessageQueue {
-	class MQMessage {
+	public class MQMessage {
 	}
 }

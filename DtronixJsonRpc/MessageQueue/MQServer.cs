@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -14,8 +15,13 @@ namespace DtronixJsonRpc.MessageQueue {
 		private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
 		public class Client {
-			public Guid Id { get; set; }
-			public AsyncSocket Socket { get; set; }
+			public MQFrame Frame;
+			public MQMessage Message;
+			public MQMailbox Mailbox;
+			public Guid Id;
+			public AsyncSocket Socket;
+			public byte[] Bytes = new byte[1024 * 8];
+			public object WriteLock = new object();
 
 		}
 
@@ -33,9 +39,10 @@ namespace DtronixJsonRpc.MessageQueue {
 		private readonly Config configurations;
 
 		private readonly CompletionPort listen_completion_port;
-		internal CompletionPort worker_completion_port;
+		private readonly CompletionPort worker_completion_port;
 		private readonly AsyncSocket listener;
-		private readonly Thread listen_thread;
+		private readonly MQIOWorker listen_worker;
+
 
 		private bool is_running;
 
@@ -53,14 +60,18 @@ namespace DtronixJsonRpc.MessageQueue {
 
 			listen_completion_port.AssociateSocket(listener, listener);
 
-			listen_thread = new Thread(Listen) {
-				IsBackground = true,
-				Name = "queue-server-connection-listener"
-			};
+			listen_worker = new MQIOWorker(listen_completion_port, "mq-server-listener");
 
 			for (var i = 0; i < this.configurations.MinimumWorkers; i++) {
-				workers.Add(new MQIOWorker(worker_completion_port));
+				var worker = new MQIOWorker(worker_completion_port, "mq-server-worker");
+				worker.OnReceive += Worker_OnReceive;
+				workers.Add(worker);
+				
 			}
+
+			listen_worker.OnAccept += Listen_worker_OnAccept;
+
+			
 
 			listener.Bind(new IPEndPoint(IPAddress.Any, 2828));
 
@@ -68,13 +79,48 @@ namespace DtronixJsonRpc.MessageQueue {
 
 		}
 
+		private void Worker_OnReceive(object sender, MQIOWorker.WorkerEventArgs e) {
+			var client_cl = e.Status.State as Client;
+			if (client_cl != null) {
+				BitConverter.ToInt32()
+
+				e.Status.AsyncSocket.Receive(client_cl.Bytes, 0, client_cl.Bytes.Length, SocketFlags.None);
+			}
+		}
+
+		private void Listen_worker_OnAccept(object sender, MQIOWorker.WorkerEventArgs e) {
+			var socket = e.Status.AsyncSocket.GetAcceptedSocket();
+			var guid = new Guid();
+			var client_cl = new Client {
+				Id = guid,
+				Socket = socket
+			};
+
+			connected_clients.Add(guid, client_cl);
+
+			// Add the new socket to the worker completion port.
+			worker_completion_port.AssociateSocket(socket, client_cl);
+
+			// Signal a worker that the new client has connected and to handle the work.
+			worker_completion_port.Signal(client_cl);
+
+			e.Status.AsyncSocket.Accept();
+			socket.Receive(client_cl.Bytes, 0, client_cl.Bytes.Length, SocketFlags.None);
+		}
+
+
 		public void Start() {
 			if (is_running) {
 				throw new InvalidOperationException("Server is already running.");
 			}
 
+			// Start all the workers.
+			for (var i = 0; i < configurations.MinimumWorkers; i++) {
+				workers[i].Start();
+			}
+
 			listener.Listen(configurations.ListenerBacklog);
-			listen_thread.Start();
+			listen_worker.Start();
 
 			listener.Accept();
 			//var socket = listener.GetAcceptedSocket();
@@ -83,6 +129,11 @@ namespace DtronixJsonRpc.MessageQueue {
 		public void Stop() {
 			if (is_running == false) {
 				throw new InvalidOperationException("Server is not running.");
+			}
+
+			// Stop all the workers.
+			for (var i = 0; i < configurations.MinimumWorkers; i++) {
+				workers[i].Stop();
 			}
 
 			listen_completion_port.Signal(null);
@@ -104,20 +155,7 @@ namespace DtronixJsonRpc.MessageQueue {
 
 				switch (completion_status.OperationType) {
 					case OperationType.Accept:
-						var socket = completion_status.AsyncSocket.GetAcceptedSocket();
-						var guid = new Guid();
-						var client_cl = new Client {
-							Id = guid,
-							Socket = socket
-						};
-
-						connected_clients.Add(guid, client_cl);
-
-						// Add the new socket to the worker completion port.
-						worker_completion_port.AssociateSocket(socket, client_cl);
-
-						// Signal a worker that the new client has connected and to handle the work.
-						worker_completion_port.Signal(client_cl);
+						
 
 						break;
 

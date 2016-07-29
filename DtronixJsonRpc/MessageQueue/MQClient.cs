@@ -43,11 +43,12 @@ namespace DtronixJsonRpc.MessageQueue {
 		}
 
 		private void Worker_OnConnect(object sender, MQIOWorker.WorkerEventArgs e) {
-			e.Status.AsyncSocket.Send(new byte[] { 1, 2, 3 }, 0, 3, SocketFlags.None);
+			//e.Status.AsyncSocket.Send(new byte[] { 1, 2, 3 }, 0, 3, SocketFlags.None);
 		}
 
 		public void Send() {
-			//client_socket.Send(new byte[] {1,2,3}, 0, 3, SocketFlags.None );
+			client_socket.Send(new byte[] {1,2,3}, 0, 3, SocketFlags.None );
+			client_socket.Send(new byte[] { 4, 5, 6, 7 }, 0, 4, SocketFlags.None);
 		}
 	}
 }
