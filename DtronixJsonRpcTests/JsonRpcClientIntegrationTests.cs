@@ -26,11 +26,22 @@ namespace DtronixJsonRpcTests {
 			var server = new MQServer(new MQServer.Config());
 			server.Start();
 
-			Thread.Sleep(500);
+			server.OnIncomingMessage += (sender, args) => {
+				MQMessage message;
+				while (args.Mailbox.TryDequeue(out message)) {
+					var test = message[0].Data;
+				}
+			};
+
+			Thread.Sleep(200);
 			var client = new MQClient();
 
 
-			Thread.Sleep(4000);
+			Thread.Sleep(200);
+			client.Send();
+			client.Send();
+			client.Send();
+			client.Send();
 			client.Send();
 
 

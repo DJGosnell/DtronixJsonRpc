@@ -113,6 +113,8 @@ namespace DtronixJsonRpc.MessageQueue {
 
 					case OperationType.Accept:
 						OnAccept?.Invoke(this, new WorkerEventArgs(this, completion_status));
+						// Auto accept the next connection.
+						completion_status.AsyncSocket.Accept();
 						break;
 
 					default:

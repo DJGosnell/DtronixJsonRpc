@@ -63,7 +63,9 @@
     <None Include="JsonRpcRequest.cs" />
     <None Include="JsonRpcActions.cs" />
     <None Include="JsonRpcServerConfigurations.cs" />
+    <Compile Include="MessageQueue\IncomingMessageEventArgs.cs" />
     <Compile Include="MessageQueue\MQFrame.cs" />
+    <Compile Include="MessageQueue\MQFrameType.cs" />
     <Compile Include="MessageQueue\MQMailbox.cs" />
     <Compile Include="MessageQueue\MQMessage.cs" />
     <Compile Include="MessageQueue\MQIOWorker.cs" />

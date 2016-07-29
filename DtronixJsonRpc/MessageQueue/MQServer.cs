@@ -20,10 +20,12 @@ namespace DtronixJsonRpc.MessageQueue {
 			public MQMailbox Mailbox;
 			public Guid Id;
 			public AsyncSocket Socket;
-			public byte[] Bytes = new byte[1024 * 8];
+			public byte[] Bytes = new byte[1024 * 16];
 			public object WriteLock = new object();
 
 		}
+
+		public event EventHandler<IncomingMessageEventArgs> OnIncomingMessage;
 
 
 		public class Config {
@@ -80,11 +82,27 @@ namespace DtronixJsonRpc.MessageQueue {
 		}
 
 		private void Worker_OnReceive(object sender, MQIOWorker.WorkerEventArgs e) {
-			var client_cl = e.Status.State as Client;
-			if (client_cl != null) {
-				BitConverter.ToInt32()
+			var client = e.Status.State as Client;
+			if (client != null) {
+				if (client.Message == null) {
+					client.Message = new MQMessage();
+				}
+				int over_read = e.Status.BytesTransferred;
+				while ((over_read = client.Message.Write(client.Bytes, e.Status.BytesTransferred - over_read, over_read)) > 0) {
+					if (client.Message.Complete == false) {
+						continue;
+					}
+					// We have a complete message.  Send it to the mailbox.
+					client.Mailbox.Enqueue(client.Message);
+					client.Message = new MQMessage();
+				}
 
-				e.Status.AsyncSocket.Receive(client_cl.Bytes, 0, client_cl.Bytes.Length, SocketFlags.None);
+				if (client.Message.Complete) {
+					client.Mailbox.Enqueue(client.Message);
+					OnIncomingMessage?.Invoke(this, new IncomingMessageEventArgs(client.Mailbox, client.Id));
+				}
+
+				e.Status.AsyncSocket.Receive(client.Bytes, 0, client.Bytes.Length, SocketFlags.None);
 			}
 		}
 
@@ -93,7 +111,9 @@ namespace DtronixJsonRpc.MessageQueue {
 			var guid = new Guid();
 			var client_cl = new Client {
 				Id = guid,
-				Socket = socket
+				Socket = socket,
+				Mailbox = new MQMailbox()
+				
 			};
 
 			connected_clients.Add(guid, client_cl);
@@ -104,7 +124,7 @@ namespace DtronixJsonRpc.MessageQueue {
 			// Signal a worker that the new client has connected and to handle the work.
 			worker_completion_port.Signal(client_cl);
 
-			e.Status.AsyncSocket.Accept();
+			// Set the first receive.
 			socket.Receive(client_cl.Bytes, 0, client_cl.Bytes.Length, SocketFlags.None);
 		}
 
@@ -123,7 +143,6 @@ namespace DtronixJsonRpc.MessageQueue {
 			listen_worker.Start();
 
 			listener.Accept();
-			//var socket = listener.GetAcceptedSocket();
 		}
 
 		public void Stop() {
